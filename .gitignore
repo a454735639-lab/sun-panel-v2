@@ -60,3 +60,14 @@ fabric.properties
 /.idea/jarRepositories.xml
 /.idea/runConfigurations.xml
 /.idea/vcs.xml
+
+# --- build artifacts (added) ---
+service/web/
+sun-panel-bin
+sun-panel-bin2
+sun-panel-rel
+
+# --- runtime data (must not be tracked) ---
+service/conf/conf.ini
+service/database/*.db
+service/runtime/runlog/*.log

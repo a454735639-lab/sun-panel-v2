@@ -1,0 +1,18 @@
+[Unit]
+Description=sun-panel-v2 (75412701 fork)
+Documentation=https://github.com/75412701/sun-panel-v2
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sunpanel
+Group=sunpanel
+WorkingDirectory=/opt/sunpanel-v2
+ExecStart=/opt/sunpanel-v2/sun-panel
+Restart=always
+RestartSec=2
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
