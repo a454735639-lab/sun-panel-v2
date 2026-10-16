@@ -41,9 +41,10 @@ func UpdateIconBase64() {
 			continue
 		}
 
-		// 检查是否为base64格式
-		if strings.HasPrefix(iconInfo.Src, "data:") {
-			// 已经是base64格式，跳过
+		// 仅在图标为空时才自动抓取。
+		// 绝不覆盖用户自定义的图标（外部 URL 或本地 /uploads 路径），
+		// 否则用户精心挑选的图标会被自动抓取的通用 favicon 顶掉。
+		if iconInfo.Src != "" {
 			skippedCount++
 			continue
 		}
