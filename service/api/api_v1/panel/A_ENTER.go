@@ -7,4 +7,5 @@ type ApiPanel struct {
 	ItemIconGroup ItemIconGroup
 	Bookmark      Bookmark
 	SearchEngine  SearchEngine
+	UrlRule       UrlRuleApi
 }

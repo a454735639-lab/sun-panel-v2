@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { NButton, NCard, NTag } from 'naive-ui'
 import { t } from '@/locales'
+import UrlRuleManager from './UrlRuleManager.vue'
 
 // 自动判断内外网测试
 const testStatus = ref<'idle' | 'testing' | 'success_lan' | 'success_wan' | 'failed'>('idle')
@@ -119,6 +120,11 @@ onMounted(() => {
         </div>
       </div>
     </NCard>
+
+    <!-- 地址匹配规则：与上面的内外网自动判断配套使用 ——
+         自动判断决定"默认走内网还是外网"，
+         规则则处理"某些站点要单独指定地址"的例外。 -->
+    <UrlRuleManager />
   </div>
 </template>
 

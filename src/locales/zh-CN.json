@@ -184,6 +184,32 @@
         "dark": "深色 ",
         "light": "浅色 "
       }
+    },
+    "urlRule": {
+      "title": "地址匹配规则",
+      "desc": "按规则逐条匹配卡片地址，命中即用对应地址打开；全部不命中则回落到自动内外网判断。适合“同一站点内网走 A、外网走 B”这类更细的需求。",
+      "add": "新增规则",
+      "edit": "编辑规则",
+      "empty": "还没有规则。默认使用自动内外网判断。",
+      "pattern": "匹配模式",
+      "target": "打开地址",
+      "descLabel": "备注",
+      "enabled": "启用",
+      "patternHint": "支持通配符 * 与端口。示例：*.example.com 匹配该域名及子域；nas.local:5000 只匹配指定端口；* 匹配全部。",
+      "targetHint": "命中后实际打开的地址，可带协议与端口。",
+      "confirmDelete": "确认删除规则",
+      "confirmDeleteDesc": "确定删除规则「{pattern}」？此操作不可撤销。",
+      "deleted": "已删除",
+      "added": "已新增",
+      "saved": "已保存",
+      "patternTargetRequired": "匹配模式与打开地址都不能为空",
+      "testTitle": "试跑规则",
+      "testPlaceholder": "输入一个地址，例如 http://nas.example.com:5000",
+      "testRun": "测试",
+      "testUrlRequired": "请先输入要测试的地址",
+      "testHit": "命中规则",
+      "testTarget": "将打开",
+      "testMiss": "没有规则命中，将使用自动内外网判断。"
     }
   },
   "notepad": {
@@ -257,7 +283,9 @@
     "username": "账号",
     "verify": "验证",
     "warning": "警告",
-    "yes": "是"
+    "yes": "是",
+    "loading": "加载中…",
+    "optional": "可选"
   },
   "deskModule": {
     "clock": {
