@@ -1,0 +1,23 @@
+{{ define "confirm_dialog" }}
+<div class="confirm-backdrop" onclick="if(event.target===this)closeConfirm()">
+  <div class="confirm-box">
+    <h3 class="confirm-title">
+      {{ if eq .Type "danger" }}<span class="confirm-danger-ico">!</span>{{ end }}
+      {{ .Title }}
+    </h3>
+    <div class="confirm-msg">{{ .Message }}</div>
+    {{ if .RequireInput }}
+      <label class="field">
+        <span class="field-label">请输入 <strong>{{ .RequireInput }}</strong> 以确认</span>
+        <input type="text" id="confirm-input" class="confirm-input" autocomplete="off" spellcheck="false">
+      </label>
+      <p class="confirm-hint">此操作不可撤销。</p>
+    {{ end }}
+    <div class="confirm-actions">
+      <button type="button" class="btn" onclick="closeConfirm()">取消</button>
+      <button type="button" class="btn btn--danger" id="confirm-ok" onclick="submitConfirm()">{{ or .OkText "确认" }}</button>
+    </div>
+  </div>
+</div>
+{{ end }}
+{{ template "confirm_dialog" . }}

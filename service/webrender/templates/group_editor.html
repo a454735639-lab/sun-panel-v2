@@ -47,8 +47,8 @@
         {{ if not .IsNew }}
           <button type="button" class="btn btn--danger"
                   hx-post="/hx/group/{{ .Group.ID }}/delete"
-                  hx-confirm="确定删除分组「{{ .Group.Title }}」？分组内有卡片时会被拒绝。"
-                  hx-swap="none">删除</button>
+                  data-confirm-action='{"title": "确认删除分组", "message": "确定删除分组「{{ .Group.Title }}」？分组内有卡片时会被拒绝。", "okText": "删除分组", "requireInput": "{{ .Group.Title }}", "type": "danger"}'
+                  hx-swap="none" onclick="confirmHx(this, event)">删除</button>
         {{ end }}
         <span class="spacer"></span>
         <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>

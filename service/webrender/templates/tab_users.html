@@ -21,8 +21,8 @@
             {{ if ne .ID $.User.ID }}
               <button type="button" class="btn btn--sm btn--danger"
                       hx-post="/hx/users/{{ .ID }}/delete"
-                      hx-confirm="确定删除账号 {{ .Username }}？其分组和卡片会一并删除。"
-                      hx-swap="none">删除</button>
+                      data-confirm-action='{"title": "确认删除账号", "message": "删除账号 {{ .Username }} 会连同其分组、卡片、书签、便签一并删除。", "okText": "删除账号", "requireInput": "{{ .Username }}", "type": "danger"}'
+                      hx-swap="none" onclick="confirmHx(this, event)">删除</button>
             {{ end }}
           </td>
         </tr>

@@ -31,9 +31,9 @@
                 hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
                 onclick="event.preventDefault();event.stopPropagation()">✎</button>
         <button type="button" class="card-btn card-btn--danger" title="删除"
-                hx-post="/hx/card/{{ .ID }}/delete" hx-confirm="确定删除「{{ .Title }}」？"
+                hx-post="/hx/card/{{ .ID }}/delete" data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
-                onclick="event.preventDefault();event.stopPropagation()">✕</button>
+                onclick="confirmHx(this, event)">✕</button>
       </span>
     </a>
   {{ else if eq $style 0 }}
@@ -72,9 +72,9 @@ CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .Containe
                 hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
                 onclick="event.preventDefault();event.stopPropagation()">✎</button>
         <button type="button" class="card-btn card-btn--danger" title="删除"
-                hx-post="/hx/card/{{ .ID }}/delete" hx-confirm="确定删除「{{ .Title }}」？"
+                hx-post="/hx/card/{{ .ID }}/delete" data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
-                onclick="event.preventDefault();event.stopPropagation()">✕</button>
+                onclick="confirmHx(this, event)">✕</button>
       </span>
     </a>
   {{ else }}
@@ -105,9 +105,9 @@ CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .Containe
                 hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
                 onclick="event.preventDefault();event.stopPropagation()">✎</button>
         <button type="button" class="card-btn card-btn--danger" title="删除"
-                hx-post="/hx/card/{{ .ID }}/delete" hx-confirm="确定删除「{{ .Title }}」？"
+                hx-post="/hx/card/{{ .ID }}/delete" data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
-                onclick="event.preventDefault();event.stopPropagation()">✕</button>
+                onclick="confirmHx(this, event)">✕</button>
       </span>
     </a>
   {{ end }}

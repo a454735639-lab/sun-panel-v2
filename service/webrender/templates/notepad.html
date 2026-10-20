@@ -21,8 +21,8 @@
                       onclick="openNoteForm({{ .ID }})">✎</button>
               <button type="button" class="card-btn card-btn--danger" title="删除"
                       hx-post="/hx/notepad/{{ .ID }}/delete"
-                      hx-confirm="确定删除便签「{{ .Title }}」？"
-                      hx-swap="none">✕</button>
+                      data-confirm-action='{"title": "确认删除便签", "message": "确定删除便签「{{ .Title }}」？", "okText": "删除", "requireInput": "", "type": "danger"}'
+                      hx-swap="none" onclick="confirmHx(this, event)">✕</button>
             </span>
           </div>
           <div class="note-content">{{ .Content }}</div>

@@ -79,8 +79,8 @@
                     hx-get="/hx/group/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML">✎</button>
             <button type="button" class="card-btn card-btn--danger" title="删除分组"
                     hx-post="/hx/group/{{ .ID }}/delete"
-                    hx-confirm="确定删除分组「{{ .Title }}」？分组内有卡片时会被拒绝。"
-                    hx-swap="none">✕</button>
+                    data-confirm-action='{"title": "确认删除分组", "message": "确定删除分组「{{ .Title }}」？分组内有卡片时会被拒绝。", "okText": "删除分组", "requireInput": "{{ .Title }}", "type": "danger"}'
+                    hx-swap="none" onclick="confirmHx(this, event)">✕</button>
           </span>
         </h2>
 

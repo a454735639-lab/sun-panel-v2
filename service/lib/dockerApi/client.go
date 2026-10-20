@@ -73,6 +73,10 @@ type ContainerInfo struct {
 	PrimaryPort int               `json:"primaryPort"`
 	Labels      map[string]string `json:"labels"`
 	NavName     string            `json:"navName"`
+	Running     bool              `json:"running"`
+	// 以下字段由 GetContainerStates 回填，便于模板直接取用
+	CPUPercent float64 `json:"cpuPercent"`
+	MemUsage   uint64  `json:"memUsage"`
 }
 
 // PortMapping 端口映射
@@ -93,6 +97,7 @@ type ContainerState struct {
 	MemLimit   uint64  `json:"memLimit"`
 	NetRx      uint64  `json:"netRx"`
 	NetTx      uint64  `json:"netTx"`
+	Running    bool    `json:"running"`
 }
 
 type apiContainerListItem struct {
@@ -170,6 +175,7 @@ func (c *Client) ListContainers(ctx context.Context) ([]ContainerInfo, error) {
 			PrimaryPort: pickPrimaryPort(ports),
 			Labels:      it.Labels,
 			NavName:     navName,
+			Running:     it.State == "running",
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
@@ -266,6 +272,7 @@ func (c *Client) GetContainerStates(ctx context.Context, ids []string, withStats
 					}
 					st.State = info.State.Status
 					st.Status = info.State.Status
+					st.Running = info.State.Status == "running"
 				}
 			}
 			ch <- res{idx: idx, st: st}

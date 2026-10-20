@@ -12,9 +12,9 @@
                   onclick="event.preventDefault();event.stopPropagation();openBookmarkForm({{ .ID }},1)">✎</button>
           <button type="button" class="card-btn card-btn--danger" title="删除"
                   hx-post="/hx/bookmark/{{ .ID }}/delete"
-                  hx-confirm="确定删除文件夹「{{ .Title }}」？里面的书签会一并删除。"
+                  data-confirm-action='{"title": "确认删除文件夹", "message": "删除「{{ .Title }}」会连同里面的书签一并删除。", "okText": "删除文件夹", "requireInput": "", "type": "danger"}'
                   hx-swap="none"
-                  onclick="event.preventDefault();event.stopPropagation()">✕</button>
+                  onclick="confirmHx(this, event)">✕</button>
         </span>
       </summary>
       <div class="bm-children">
@@ -38,8 +38,8 @@
                 onclick="openBookmarkForm({{ .ID }},0)">✎</button>
         <button type="button" class="card-btn card-btn--danger" title="删除"
                 hx-post="/hx/bookmark/{{ .ID }}/delete"
-                hx-confirm="确定删除「{{ .Title }}」？"
-                hx-swap="none">✕</button>
+                data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
+                hx-swap="none" onclick="confirmHx(this, event)">✕</button>
       </span>
     </div>
   {{ end }}

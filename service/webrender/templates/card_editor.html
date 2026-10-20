@@ -134,10 +134,10 @@
         {{ if not .IsNew }}
           <button type="button" class="btn btn--danger"
                   hx-post="/hx/card/{{ .Card.ID }}/delete"
-                  hx-confirm="确定删除这张卡片？"
+                  data-confirm-action='{"title": "确认删除卡片", "message": "确定删除这张卡片？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                   hx-target="#card-{{ .Card.ID }}"
                   hx-swap="outerHTML"
-                  hx-on::after-request="document.querySelector('.modal-backdrop').remove()">删除</button>
+                  hx-on::after-request="document.querySelector('.modal-backdrop').remove()" onclick="confirmHx(this, event)">删除</button>
         {{ end }}
         <span class="spacer"></span>
         <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>

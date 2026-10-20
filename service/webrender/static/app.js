@@ -618,3 +618,97 @@
   // htmx 局部刷新后重新绑定图标
   document.addEventListener('htmx:afterSwap', function () { syncIcons() })
 })()
+/* ---------- 自定义二次确认 ---------- */
+var confirmState = null
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
+window.showConfirm = function (opts, onOk) {
+  var host = document.getElementById('confirm-host')
+  if (!host) return
+  confirmState = { opts: opts || {}, onOk: onOk }
+  var o = confirmState.opts
+  var html = '<div class="confirm-backdrop" onclick="if(event.target===this)closeConfirm()">'
+  html += '<div class="confirm-box">'
+  html += '<h3 class="confirm-title">'
+  if ((o.type || 'danger') === 'danger') html += '<span class="confirm-danger-ico">!</span>'
+  html += esc(o.title || '确认操作') + '</h3>'
+  html += '<div class="confirm-msg">' + esc(o.message || '此操作不可撤销。') + '</div>'
+  if (o.requireInput) {
+    html += '<label class="field"><span class="field-label">请输入 <strong>' +
+      esc(o.requireInput) + '</strong> 以确认</span>'
+    html += '<input type="text" id="confirm-input" class="confirm-input" autocomplete="off" spellcheck="false"></label>'
+    html += '<p class="confirm-hint">此操作不可撤销。</p>'
+  }
+  html += '<div class="confirm-actions">'
+  html += '<button type="button" class="btn" onclick="closeConfirm()">取消</button>'
+  html += '<button type="button" class="btn btn--danger" id="confirm-ok" onclick="submitConfirm()">' +
+    esc(o.okText || '确认') + '</button>'
+  html += '</div></div></div>'
+  host.innerHTML = html
+  var inp = document.getElementById('confirm-input')
+  if (inp) {
+    inp.focus()
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitConfirm()
+      if (e.key === 'Escape') closeConfirm()
+    })
+  }
+}
+
+window.closeConfirm = function () {
+  var host = document.getElementById('confirm-host')
+  if (host) host.innerHTML = ''
+  confirmState = null
+}
+
+window.submitConfirm = function () {
+  if (!confirmState) return
+  var o = confirmState.opts
+  if (o.requireInput) {
+    var inp = document.getElementById('confirm-input')
+    var v = inp ? inp.value.trim() : ''
+    if (v !== o.requireInput) {
+      if (inp) {
+        inp.style.borderColor = '#ff6b81'
+        inp.placeholder = '输入不匹配，请重新输入'
+        inp.value = ''
+      }
+      return
+    }
+  }
+  var cb = confirmState.onOk
+  closeConfirm()
+  if (cb) cb()
+}
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && confirmState) closeConfirm()
+})
+
+/* htmx 删除/危险按钮拦截：先弹自定义确认，确认后才发请求 */
+window.confirmHx = function (btn, ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation() }
+  var raw = btn.getAttribute('data-confirm-action') || '{}'
+  var o = {}
+  try { o = JSON.parse(raw) } catch (e) { o = {} }
+  showConfirm({
+    title: o.title || '确认操作',
+    message: o.message || '此操作不可撤销。',
+    okText: o.okText || '确认',
+    requireInput: o.requireInput || '',
+    type: o.type || 'danger'
+  }, function () {
+    var method = 'POST'
+    var url = btn.getAttribute('hx-post') || btn.getAttribute('hx-get') || ''
+    if (btn.hasAttribute('hx-get') && !btn.hasAttribute('hx-post')) method = 'GET'
+    if (btn.hasAttribute('hx-delete')) method = 'DELETE'
+    var target = btn.getAttribute('hx-target') || btn
+    var swap = btn.getAttribute('hx-swap') || 'outerHTML'
+    if (url) htmx.ajax(method, url, { target: target, swap: swap })
+  })
+}

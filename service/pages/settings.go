@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"sun-panel/global"
+	"sun-panel/lib/dockerApi"
 	"sun-panel/models"
 	"sun-panel/webrender"
 
@@ -67,8 +68,18 @@ func Settings(c *gin.Context) {
 			}
 			states := global.DockerClient.GetContainerStates(ctx, ids, true)
 			sm := map[string]interface{}{}
-			for _, s := range states {
-				sm[s.ID] = s
+			byID := map[string]*dockerApi.ContainerState{}
+			for i := range states {
+				st := states[i]
+				sm[st.ID] = st
+				byID[st.ID] = &st
+			}
+			// 回填到 ContainerInfo，模板可直接取 .CPUPercent / .MemUsage
+			for i := range list {
+				if st, ok := byID[list[i].ID]; ok {
+					list[i].CPUPercent = st.CPUPercent
+					list[i].MemUsage = st.MemUsage
+				}
 			}
 			data["Containers"] = list
 			data["Running"] = running

@@ -1302,3 +1302,53 @@ html[data-theme="light"] .size-opt { border-color: rgba(0,0,0,.12); }
 html[data-theme="light"] .size-opt.active { border-color: var(--accent); background: rgba(47,158,127,.1); }
 html[data-theme="light"] .size-demo i { background: rgba(0,0,0,.28); }
 html[data-theme="light"] .size-demo b { background: rgba(0,0,0,.15); }
+
+/* ---------- 自定义确认弹窗 ---------- */
+.confirm-backdrop {
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(3px);
+  padding: 20px;
+}
+.confirm-box {
+  background: var(--panel, #1c1f24);
+  border: 1px solid var(--line, #2e333b);
+  border-radius: var(--radius, 14px);
+  padding: 22px 24px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.confirm-title {
+  font-size: 16px; font-weight: 600; margin: 0 0 10px;
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text, #e6e8eb);
+}
+.confirm-danger-ico {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(255,107,129,.18); color: #ff6b81;
+  font-size: 13px; font-weight: 700; flex: none;
+}
+.confirm-msg {
+  font-size: 13.5px; line-height: 1.6; color: var(--text-dim, #9aa1ab);
+  margin-bottom: 16px; word-break: break-word;
+}
+.confirm-input {
+  width: 100%; box-sizing: border-box;
+  padding: 9px 12px; border-radius: 8px;
+  border: 1px solid var(--line, #2e333b);
+  background: rgba(255,255,255,.04);
+  color: var(--text, #e6e8eb); font-size: 14px;
+}
+.confirm-input:focus { outline: none; border-color: #ff6b81; }
+.confirm-hint { font-size: 12px; color: #ff6b81; margin: 8px 0 0; }
+.confirm-actions {
+  display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;
+}
+html[data-theme="light"] .confirm-box { background: #fff; border-color: #e5e7eb; }
+html[data-theme="light"] .confirm-title { color: #1d2126; }
+html[data-theme="light"] .confirm-msg { color: #6b7280; }
+html[data-theme="light"] .confirm-input {
+  background: #f9fafb; border-color: #e5e7eb; color: #1d2126;
+}

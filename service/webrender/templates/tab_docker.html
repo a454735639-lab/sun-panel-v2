@@ -35,10 +35,10 @@
           {{ if .Running }}
             <button type="button" class="btn btn--sm"
                     hx-post="/hx/docker/action" hx-vals='{"containerId":"{{ .ID }}","action":"stop"}'
-                    hx-confirm="确定停止 {{ .Name }}？" hx-swap="none">停止</button>
+                    data-confirm-action='{"title": "确认停止容器", "message": "确定停止 {{ .Name }}？服务会暂时中断。", "okText": "停止", "requireInput": "", "type": "danger"}' hx-swap="none" onclick="confirmHx(this, event)">停止</button>
             <button type="button" class="btn btn--sm"
                     hx-post="/hx/docker/action" hx-vals='{"containerId":"{{ .ID }}","action":"restart"}'
-                    hx-confirm="确定重启 {{ .Name }}？" hx-swap="none">重启</button>
+                    data-confirm-action='{"title": "确认重启容器", "message": "确定重启 {{ .Name }}？服务会短暂中断。", "okText": "重启", "requireInput": "", "type": "warn"}' hx-swap="none" onclick="confirmHx(this, event)">重启</button>
           {{ else }}
             <button type="button" class="btn btn--sm btn--primary"
                     hx-post="/hx/docker/action" hx-vals='{"containerId":"{{ .ID }}","action":"start"}'
