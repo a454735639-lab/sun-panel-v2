@@ -156,6 +156,7 @@ const isMobile = computed(() => width.value < 768)
 import { getList as getBookmarksList } from '@/api/panel/bookmark'
 import { getList as getGroupList } from '@/api/panel/itemIconGroup'
 import { ss } from '@/utils/storage/local'
+import { staleWhileRevalidate } from '@/utils/cacheStrategy'
 
 
 // 书签数据树
@@ -618,100 +619,78 @@ function filterItemsByNetworkMode() {
 }
 
 async function getList() {
-  try {
-    // 1. 首先尝试从缓存读取数据
-    const cachedData = ss.get(GROUP_LIST_CACHE_KEY)
-    if (cachedData) {
-      items.value = cachedData
-      // 为每个分组加载图标数据
-      for (let i = 0; i < cachedData.length; i++) {
-        const element = cachedData[i]
+  // 用 stale-while-revalidate：先渲染缓存保住"秒开"，
+  // 同时后台拉一次最新数据 —— 原实现命中缓存就 return，
+  // 导致别处的改动在这台设备上永远看不到。
+  await staleWhileRevalidate<ItemGroup[]>({
+    key: GROUP_LIST_CACHE_KEY,
+    readCache: () => ss.get(GROUP_LIST_CACHE_KEY),
+    writeCache: data => ss.set(GROUP_LIST_CACHE_KEY, data),
+    fetchRemote: async () => {
+      try {
+        const response = await getGroupList<Common.ListResponse<ItemGroup[]>>()
+        if (response.code === 0)
+          return response.data.list
+      }
+      catch {
+        // 失败返回 null → 保留缓存
+      }
+      return null
+    },
+    onUpdate: (list) => {
+      items.value = list
+      // 为每个分组加载图标数据（内部同样走 SWR）
+      for (let i = 0; i < list.length; i++) {
+        const element = list[i]
         if (element.id)
           updateItemIconGroupByNet(i, element.id)
       }
       // 应用网络模式过滤
       filterItemsByNetworkMode()
-      return
-    }
-
-    // 2. 缓存中没有数据，请求接口获取数据
-    const response = await getGroupList<Common.ListResponse<ItemGroup[]>>()
-    if (response.code === 0) {
-      items.value = response.data.list
-      // 3. 将数据永久保存到缓存中
-      ss.set(GROUP_LIST_CACHE_KEY, response.data.list)
-
-      // 为每个分组加载图标数据
-      for (let i = 0; i < response.data.list.length; i++) {
-        const element = response.data.list[i]
-        if (element.id)
-          updateItemIconGroupByNet(i, element.id)
-      }
-      // 应用网络模式过滤
-      filterItemsByNetworkMode()
-    }
-  } catch (error) {
-    // 出错时尝试从缓存获取
-    const cachedData = ss.get(GROUP_LIST_CACHE_KEY)
-    if (cachedData) {
-      items.value = cachedData
-      // 为每个分组加载图标数据
-      for (let i = 0; i < cachedData.length; i++) {
-        const element = cachedData[i]
-        if (element.id)
-          updateItemIconGroupByNet(i, element.id)
-      }
-      // 应用网络模式过滤
-      filterItemsByNetworkMode()
-    }
-  }
+    },
+  })
 }
 
 // 从后端获取组下面的图标
 async function updateItemIconGroupByNet(itemIconGroupIndex: number, itemIconGroupId: number) {
-  try {
-    // 1. 定义缓存键
-    const cacheKey = `${ITEM_ICON_LIST_CACHE_KEY_PREFIX}${itemIconGroupId}`
+  const cacheKey = `${ITEM_ICON_LIST_CACHE_KEY_PREFIX}${itemIconGroupId}`
 
-    // 2. 首先尝试从缓存读取数据
-    const cachedData = ss.get(cacheKey)
-    if (cachedData) {
-      items.value[itemIconGroupIndex].items = cachedData
-
-      // 当所有组的数据都加载完成后，应用网络模式过滤
-      const allGroupsLoaded = items.value.every(group => group.items !== undefined)
-      if (allGroupsLoaded) {
-        filterItemsByNetworkMode()
-      }
-      return
-    }
-    const res = await getListByGroupId<Common.ListResponse<Panel.ItemInfo[]>>(itemIconGroupId)
-
-    if (res.code === 0) {
-      items.value[itemIconGroupIndex].items = res.data.list
-      // 4. 将数据永久保存到缓存中
-      ss.set(cacheKey, res.data.list)
-
-      // 当所有组的数据都加载完成后，应用网络模式过滤
-      const allGroupsLoaded = items.value.every(group => group.items !== undefined)
-      if (allGroupsLoaded) {
-        filterItemsByNetworkMode()
-      }
-    }
-  } catch (error) {
-    // 出错时尝试从缓存获取
-    const cacheKey = `${ITEM_ICON_LIST_CACHE_KEY_PREFIX}${itemIconGroupId}`
-    const cachedData = ss.get(cacheKey)
-    if (cachedData) {
-      items.value[itemIconGroupIndex].items = cachedData
-
-      // 当所有组的数据都加载完成后，应用网络模式过滤
-      const allGroupsLoaded = items.value.every(group => group.items !== undefined)
-      if (allGroupsLoaded) {
-        filterItemsByNetworkMode()
-      }
-    }
+  // 全部组都拿到数据后统一应用网络过滤。
+  // 放在这里而不是 onUpdate 里，是为了让"数据未变化"的情况也能收尾 ——
+  // 否则命中缓存且远端无变化时，过滤永远不会被触发。
+  const settle = () => {
+    const allGroupsLoaded = items.value.every(group => group.items !== undefined)
+    if (allGroupsLoaded)
+      filterItemsByNetworkMode()
   }
+
+  const applyItems = (list: Panel.ItemInfo[]) => {
+    // 用 id 重新定位组，而不是直接用传入的 index。
+    // 刷新是异步的，期间 items 可能已被整体替换（后端增删了组），
+    // 此时旧 index 会写到错误的组上 —— 表现为"卡片串组"。
+    const target = items.value.find(g => g.id === itemIconGroupId)
+    if (target)
+      target.items = list
+  }
+
+  await staleWhileRevalidate<Panel.ItemInfo[]>({
+    key: cacheKey,
+    readCache: () => ss.get(cacheKey),
+    writeCache: data => ss.set(cacheKey, data),
+    fetchRemote: async () => {
+      try {
+        const res = await getListByGroupId<Common.ListResponse<Panel.ItemInfo[]>>(itemIconGroupId)
+        if (res.code === 0)
+          return res.data.list
+      }
+      catch {
+        // 失败返回 null → 保留缓存
+      }
+      return null
+    },
+    onUpdate: applyItems,
+    onSettled: settle,
+  })
 }
 
 // 组件激活时刷新书签数据确保显示最新顺序
