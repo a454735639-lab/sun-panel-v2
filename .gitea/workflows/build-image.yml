@@ -1,0 +1,155 @@
+# ==========================================================================
+# Sun-Panel-v2 · push 时自动构建 arm64 镜像并推送到 Gitea Registry
+#
+# 运行位置：NAS 上的 act_runner（容器 act_runner，标签 ubuntu-latest）
+# 触发：push 到 main，或手动 workflow_dispatch
+# 产物：192.168.3.20:3003/gitadmin/sunpanel:<version> / :latest / :sha-<short>
+#
+# 与 Agent2api 仓库的差异：
+#   * 本仓库是**真源码项目**（Vue 前端 + Go 后端），不是发行包归档
+#   * 直接用仓库自带的根 Dockerfile（多阶段：node 构建前端 → golang 编译后端 → alpine 运行）
+#   * 构建耗时约 2 分钟，内存峰值约 1.2GB（实测 NAS 上可用内存从未低于 1.7GB）
+#
+# 关键点（都是实测踩过的坑）：
+#   1. 容器内必须清空代理变量 —— NAS 的 Docker daemon 会注入 HTTP_PROXY，
+#      而 busybox/wget 不认 CIDR 网段，访问内网 Gitea 会被 Clash 转走返回 502。
+#   2. 基础镜像必须预先 pull —— Docker Hub 直连会走 IPv6 超时。
+#      步骤 2 里逐个 pull（带重试），后面 docker build 用 --pull=false。
+#   3. act_runner 不预置仓库内容，且本 Gitea 未镜像 actions/checkout，
+#      所以用 git clone + REPO_READ_TOKEN 检出。
+# ==========================================================================
+name: build-arm64-image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: 192.168.3.20:3003
+  IMAGE: 192.168.3.20:3003/gitadmin/sunpanel
+  GITEA_HOST: gitea:3000
+  REPO: gitadmin/Sunpanel
+  # 容器内不走代理（daemon 注入的代理会让内网地址 502）
+  HTTP_PROXY: ""
+  HTTPS_PROXY: ""
+  http_proxy: ""
+  https_proxy: ""
+  NO_PROXY: "*"
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. 环境自检
+        run: |
+          set -eux
+          uname -m
+          docker version --format 'client={{.Client.Version}} server={{.Server.Version}}'
+          git --version
+
+      - name: 2. 检出源码
+        env:
+          REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+        run: |
+          set -eu
+          SRC=/tmp/sp-src
+          rm -rf "$SRC"
+          git clone --depth 1 "http://gitadmin:${REPO_READ_TOKEN}@${GITEA_HOST}/${REPO}.git" "$SRC"
+          echo "SRC=$SRC" >> "$GITHUB_ENV"
+          echo "commit=$(cd "$SRC" && git rev-parse HEAD)" >> "$GITHUB_ENV"
+          ls -la "$SRC" | head -20
+
+      - name: 3. 计算版本号与 tag
+        run: |
+          set -eu
+          cd "$SRC"
+          # 版本号从 service/assets/version 读取（格式：日期|版本号）
+          VERSION="$(cut -d '|' -f 2 ./service/assets/version | tr -d ' \r\n')"
+          [ -n "$VERSION" ] || { echo "无法读取版本号"; exit 1; }
+          SHORT="$(echo "$commit" | cut -c1-7)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$SHORT" >> "$GITHUB_ENV"
+          echo "构建版本：$VERSION （commit $SHORT）"
+
+      - name: 4. 预拉基础镜像（避免 IPv6 超时）
+        run: |
+          set -eu
+          for img in node:20-alpine golang:1.21-alpine alpine:3.21; do
+            echo "--- 拉取 $img ---"
+            ok=0
+            for attempt in 1 2 3; do
+              if docker pull "$img"; then ok=1; break; fi
+              echo "  第 $attempt 次失败，重试..."; sleep 5
+            done
+            [ "$ok" = 1 ] || { echo "拉取 $img 失败"; exit 1; }
+          done
+
+      - name: 5. docker build（arm64）
+        run: |
+          set -eu
+          cd "$SRC"
+          # --pull=false：用步骤 4 预拉好的本地镜像
+          docker build --pull=false \
+            -t "$IMAGE:$VERSION" \
+            -t "$IMAGE:latest" \
+            -t "$IMAGE:sha-$SHORT_SHA" \
+            -t "sunpanel:$VERSION" \
+            .
+          docker image ls --filter "reference=$IMAGE"
+
+      - name: 6. 结构校验
+        run: |
+          set -eu
+          docker image inspect "$IMAGE:$VERSION" --format '  arch={{.Architecture}}/{{.Os}}'
+          arch="$(docker image inspect "$IMAGE:$VERSION" --format '{{.Architecture}}')"
+          [ "$arch" = "arm64" ] || { echo "架构不是 arm64：$arch"; exit 1; }
+          # 检查关键文件都在
+          docker run --rm --entrypoint sh "$IMAGE:$VERSION" -c '
+            test -x /app/sun-panel && echo "  ✓ /app/sun-panel 可执行"
+            test -f /app/web/index.html && echo "  ✓ /app/web/index.html 存在"
+            test -f /app/conf.example.ini && echo "  ✓ /app/conf.example.ini 存在"
+            test -x /app/entrypoint.sh && echo "  ✓ /app/entrypoint.sh 可执行"
+            echo "  前端文件数: $(find /app/web -type f | wc -l)"
+          '
+
+      - name: 7. 冒烟运行（端口 3002 可连）
+        run: |
+          set -eu
+          NAME=sp-smoke-$$
+          docker run -d --name "$NAME" "$IMAGE:$VERSION" >/dev/null
+          trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true' EXIT
+          ok=0
+          for i in $(seq 1 30); do
+            code="$(docker exec "$NAME" sh -c 'wget -q -O- --timeout=3 http://127.0.0.1:3002/ 2>/dev/null; echo "HTTP$?"' || true)"
+            if docker exec "$NAME" sh -c 'exec 3<>/dev/tcp/127.0.0.1/3002' 2>/dev/null; then
+              echo "第 $i 次探测：3002 已监听"; ok=1; break
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          echo "--- 启动日志 ---"
+          docker logs "$NAME" 2>&1 | head -12 || true
+
+      - name: 8. 推送到 Gitea Registry
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -eu
+          echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" -u gitadmin --password-stdin
+          for t in "$VERSION" latest "sha-$SHORT_SHA"; do
+            docker push "$IMAGE:$t"
+          done
+          docker logout "$REGISTRY" >/dev/null 2>&1 || true
+
+      - name: 9. 从 Registry 拉回并跑起来（端到端验证）
+        run: |
+          set -eu
+          docker rmi "$IMAGE:$VERSION" >/dev/null 2>&1 || true
+          docker pull "$IMAGE:$VERSION"
+          docker image inspect "$IMAGE:$VERSION" --format 'pulled={{.Architecture}}/{{.Os}}'
+          NAME=sp-pull-$$
+          docker run -d --name "$NAME" "$IMAGE:$VERSION" >/dev/null
+          sleep 8
+          docker exec "$NAME" sh -c 'exec 3<>/dev/tcp/127.0.0.1/3002' && echo "拉回的镜像可正常启动并监听 3002"
+          docker rm -f "$NAME" >/dev/null 2>&1 || true
