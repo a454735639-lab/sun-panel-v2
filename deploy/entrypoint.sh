@@ -22,6 +22,9 @@ for d in conf database uploads runtime runtime/runlog; do
 done
 
 # ---- 2. 把 /app 下的运行期目录软链到持久卷 ----
+# 注意：$APP_DIR/web（Vue 前端产物）**故意不在此列**。
+# 它属于只读的版本产物，应随镜像更新 —— 若软链到持久卷，
+# 升级镜像后仍会加载旧前端，出现界面与后端不匹配的问题。
 for d in conf database uploads runtime; do
   src="$APP_DIR/$d"
   dst="$DATA_DIR/$d"

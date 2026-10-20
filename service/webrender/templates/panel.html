@@ -67,6 +67,10 @@
           <a href="/notepad">便签</a>
           <a href="/settings">系统应用</a>
           <a href="/">首页</a>
+          {{/* Vue 版入口。两套前端共存（Vue 挂在 /v2/），
+               放这里便于随时对比与切换；确认取舍后可移除。 */}}
+          <div class="dropdown-sep"></div>
+          <a href="/v2/" target="_blank" rel="noopener">Vue 版（新界面）</a>
           <form action="/logout" method="post"><button type="submit">退出登录</button></form>
         </div>
       </div>

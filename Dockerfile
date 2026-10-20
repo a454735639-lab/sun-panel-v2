@@ -1,30 +1,53 @@
 # ==========================================================================
-# Sun-Panel-V2 —— 纯 Go 单二进制镜像（无 node / 无前端构建链）
+# Sun-Panel-V2 —— 双前端镜像
 #
 # 设计说明：
-#   1. 无 node 阶段
-#      Vue 产物（dist）在服务端已无任何引用（详见 README「收尾方案」）；
-#      页面模板与静态资源由 service/webrender 里的
-#      //go:embed templates / //go:embed static 打进二进制，
-#      因此运行期不需要任何外部静态资源目录。
+#   1. 两套前端并存
+#      Vue SPA（产物挂 /v2/）与 Go SSR（挂在根路径）同时提供服务，
+#      便于对比与回退。Vue 产物打进镜像的 /app/web。
 #
-#   2. CGO_ENABLED=0
-#      service/initialize/database/connect.go 实际使用
-#      github.com/glebarez/sqlite（纯 Go 驱动），
-#      go.sum 里的 mattn/go-sqlite3 仅为传递依赖。
-#      因此可关闭 cgo —— 这不只省掉 gcc/musl-dev，
-#      也解除了「必须锁 alpine3.18、否则 sqlite3 编译失败」的限制。
+#   2. 前端构建阶段不加 GOOS/GOARCH
+#      --platform=$BUILDPLATFORM 让前端与 Go 都跑在 runner 的原生架构上，
+#      linux/arm64 一路不需要 QEMU 模拟（NAS 场景的关键加速项）。
+#      前端产物与目标架构无关，用原生架构构建即可。
 #
-#   3. 原生交叉编译（替代 QEMU 模拟）
-#      --platform=$BUILDPLATFORM 让构建阶段跑在 runner 的原生架构上，
-#      由 Go 自己交叉编译出 TARGETARCH 产物。
-#      linux/arm64 一路不再需要 QEMU 模拟编译（NAS 场景的关键加速项）。
+#   3. CGO_ENABLED=0
+#      service/initialize/database/connect.go 使用
+#      github.com/glebarez/sqlite（纯 Go 驱动），故无需 cgo，
+#      也就不必锁 alpine3.18（那是 cgo 版 sqlite3 的编译限制）。
 #
 #   4. 多阶段 + 最小运行镜像
-#      运行阶段仅 alpine + 静态二进制，无需 bash/su-exec。
+#      运行阶段仅 alpine + 静态二进制 + 前端产物，无需 node。
 # ==========================================================================
 
-# ---------- 构建阶段：纯 Go ----------
+# ---------- 阶段 1：构建 Vue 前端 ----------
+FROM --platform=$BUILDPLATFORM node:20-alpine AS web-build
+
+# 国内镜像加速（CI 在境外时可删）
+RUN npm config set registry https://registry.npmmirror.com
+
+WORKDIR /web
+
+# 先只拷依赖清单，让依赖安装这层可被缓存复用
+COPY package.json package-lock.json ./
+# 用 npm ci 而非 install：严格按 lock 文件安装，构建可复现。
+# 注意本仓库的 lock 是 package-lock.json（npm），不是 pnpm-lock.yaml。
+RUN npm ci --no-audit --no-fund
+
+# 再拷前端源码与配置
+# 注意 postcss.config.js 与 tailwind.config.js 必须一并带上：
+# postcss 配置里启用了 tailwindcss + autoprefixer，缺配置会导致 vite build 失败。
+COPY index.html vite.config.ts tsconfig.json ./
+COPY postcss.config.js tailwind.config.js ./
+COPY src/ ./src/
+COPY public/ ./public/
+
+# base=/v2/ 与后端 router/vueweb.go 的 VueBasePath 保持一致：
+# 资源引用会生成为 /v2/assets/...，否则与 SSR 的 /static/* 冲突。
+ENV VITE_PUBLIC_BASE=/v2/
+RUN npx vite build
+
+# ---------- 阶段 2：构建 Go 后端 ----------
 FROM --platform=$BUILDPLATFORM golang:1.21-alpine AS build
 
 ARG TARGETOS
@@ -73,6 +96,8 @@ RUN apk add --no-cache ca-certificates tzdata curl
 COPY --from=build /out/sun-panel /app/sun-panel
 # 默认配置样例：entrypoint 首次启动时用它生成 conf/conf.ini
 COPY --from=build /src/conf/conf.example.ini /app/conf.example.ini
+# Vue 前端产物（vite build 输出），由 router/vueweb.go 托管在 /v2/
+COPY --from=web-build /web/dist /app/web
 # 入口脚本：把 /app/{conf,database,uploads,runtime} 软链到持久卷 /data，
 # 使升级镜像不丢数据（与本地 deploy/ 方案保持一致）
 COPY deploy/entrypoint.sh /app/entrypoint.sh
