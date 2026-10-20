@@ -113,6 +113,24 @@ jobs:
             echo "  前端文件数: $(find /app/web -type f | wc -l)"
           '
 
+          # 构建期环境变量校验：baseURL 不得为空。
+          #
+          # 这条检查来自一次真实事故：.dockerignore 用 !.env 放行了 .env，
+          # 但 Dockerfile 的 web-build 阶段漏了 COPY .env，导致构建时
+          # VITE_GLOB_API_URL 缺失 → axios baseURL 变成空串 →
+          # 请求打到 /panel/... 而不是 /api/panel/...，前端全部 404，
+          # 界面只显示「网络错误」。仅检查"文件存在"抓不到这类问题
+          #（文件都在、值却是错的），必须读产物里的实际值。
+          #
+          # 校验逻辑放在 scripts/check-baseurl.sh，而非内联在此处：
+          # 内联时 shell 与 YAML 的引号转义会互相干扰（实测踩过坑），
+          # 且独立脚本可在本地直接验证。
+          echo "--- baseURL 校验 ---"
+          docker run --rm --entrypoint sh \
+            -v "$PWD/scripts:/scripts:ro" \
+            "$IMAGE:$VERSION" -c 'sh /scripts/check-baseurl.sh /app/web' \
+            || { echo "前端 baseURL 为空，请求会打到错误路径（检查 Dockerfile 是否 COPY .env）"; exit 1; }
+
       - name: 7. 冒烟运行（端口 3002 可连）
         run: |
           set -eu
@@ -189,38 +207,38 @@ jobs:
           # 注意：Gitea 创建 Release 时 target_commitish 指向的 commit 若已有同名 tag 会冲突，
           #       这里 tag 带短哈希，天然唯一。
           BODY="$(cat <<EOF
-## Sun-Panel-v2 ${VERSION}
+          ## Sun-Panel-v2 ${VERSION}
 
-自动构建的 arm64 镜像（aarch64，适配 ARM NAS）。
+          自动构建的 arm64 镜像（aarch64，适配 ARM NAS）。
 
-### 镜像
+          ### 镜像
 
-\`\`\`sh
-docker pull 192.168.3.20:3003/gitadmin/sunpanel:${VERSION}
-docker pull 192.168.3.20:3003/gitadmin/sunpanel:latest
-\`\`\`
+          \`\`\`sh
+          docker pull 192.168.3.20:3003/gitadmin/sunpanel:${VERSION}
+          docker pull 192.168.3.20:3003/gitadmin/sunpanel:latest
+          \`\`\`
 
-### 运行
+          ### 运行
 
-\`\`\`sh
-docker run -d --name sun-panel \\
-  -p 3002:3002 \\
-  -v /volume1/docker/sunpanel/data:/data \\
-  192.168.3.20:3003/gitadmin/sunpanel:${VERSION}
-\`\`\`
+          \`\`\`sh
+          docker run -d --name sun-panel \\
+            -p 3002:3002 \\
+            -v /volume1/docker/sunpanel/data:/data \\
+            192.168.3.20:3003/gitadmin/sunpanel:${VERSION}
+          \`\`\`
 
-### 构建信息
+          ### 构建信息
 
-| 项 | 值 |
-|---|---|
-| 版本 | \`${VERSION}\` |
-| commit | \`${commit}\` |
-| 镜像 tag | \`${VERSION}\` / \`latest\` / \`sha-${SHORT_SHA}\` |
-| 架构 | linux/arm64 |
+          | 项 | 值 |
+          |---|---|
+          | 版本 | \`${VERSION}\` |
+          | commit | \`${commit}\` |
+          | 镜像 tag | \`${VERSION}\` / \`latest\` / \`sha-${SHORT_SHA}\` |
+          | 架构 | linux/arm64 |
 
-> 本 Release 由 Gitea Actions 自动创建。
-EOF
-)"
+          > 本 Release 由 Gitea Actions 自动创建。
+          EOF
+          )"
 
           python3 -c "
           import json, os, urllib.request, urllib.error

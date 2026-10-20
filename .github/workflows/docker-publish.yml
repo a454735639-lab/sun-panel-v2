@@ -91,6 +91,23 @@ jobs:
           fi
           echo "自检通过：/app/web 存在"
 
+          # 构建期环境变量校验：baseURL 不得为空。
+          #
+          # 这条检查来自一次真实事故：.dockerignore 用 !.env 放行了 .env，
+          # 但 Dockerfile 的 web-build 阶段漏了 COPY .env，导致构建时
+          # VITE_GLOB_API_URL 缺失 → axios baseURL 变成空串 →
+          # 请求打到 /panel/... 而不是 /api/panel/...，前端全部 404，
+          # 界面只显示「网络错误」。仅检查"文件存在"抓不到这类问题
+          #（文件都在、值却是错的），必须读产物里的实际值。
+          #
+          # 校验逻辑放在 scripts/check-baseurl.sh，而非内联在此处：
+          # 内联时 shell 与 YAML 的引号转义会互相干扰（实测踩过坑），
+          # 且独立脚本可在本地直接验证。
+          docker run --rm --entrypoint sh \
+            -v "$PWD/scripts:/scripts:ro" \
+            "$TAG" -c 'sh /scripts/check-baseurl.sh /app/web' \
+            || { echo "::error::前端 baseURL 为空，请求会打到错误路径（检查 Dockerfile 是否 COPY .env）"; exit 1; }
+
           docker run -d --name sp-check -p 13002:3002 "$TAG"
           for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:13002/healthz >/dev/null 2>&1; then break; fi
