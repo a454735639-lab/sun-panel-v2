@@ -15,6 +15,24 @@ export interface HttpOption {
   signal?: GenericAbortSignal
   beforeRequest?: () => void
   afterRequest?: () => void
+  /**
+   * 静默模式：请求失败时不弹全局错误提示，只 reject。
+   *
+   * 为什么需要它：failHandler 会给**任何**失败弹一个
+   * duration=50000 的错误提示。这对用户主动触发的操作是合理的，
+   * 但对**后台轮询**是灾难 —— 轮询可能每 2-5 秒一次，
+   * 一旦接口不可用（容器未挂载、服务重启中、网络抖动），
+   * 提示会不断堆积，把面板糊满，用户感受就是
+   * "总是提示网络错误，请稍后重试"，而且关掉一个又冒一个。
+   *
+   * 更隐蔽的是：调用方即便写了 try/catch 也拦不住 ——
+   * 提示在 failHandler 里就已弹出，try/catch 只能接住随后的 reject。
+   * 因此必须由请求层提供开关。
+   *
+   * 约定：后台定时轮询、状态探测一律传 silent: true，
+   * 由调用方自己决定降级行为（通常保留上次数据静默重试）。
+   */
+  silent?: boolean
 }
 
 export interface Response<T = any> {
@@ -26,7 +44,7 @@ export interface Response<T = any> {
 }
 
 function http<T = any>(
-  { url, data, method, headers, onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
+  { url, data, method, headers, onDownloadProgress, signal, beforeRequest, afterRequest, silent }: HttpOption,
 ) {
   const authStore = useAuthStore()
   const appStore = useAppStore()
@@ -77,10 +95,14 @@ function http<T = any>(
 
   const failHandler = (error: Response<Error>) => {
     afterRequest?.()
-    message.error(t('common.networkError'), {
-      duration: 50000,
-      closable: true,
-    })
+    // 静默模式（后台轮询）不弹提示，见 HttpOption.silent 的说明。
+    // 仍然 reject，让调用方能感知失败并自行降级。
+    if (!silent) {
+      message.error(t('common.networkError'), {
+        duration: 50000,
+        closable: true,
+      })
+    }
     throw new Error(error?.msg || 'Error')
   }
 
@@ -100,7 +122,7 @@ function http<T = any>(
 }
 
 export function get<T = any>(
-  { url, data, method = 'GET', onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
+  { url, data, method = 'GET', onDownloadProgress, signal, beforeRequest, afterRequest, silent }: HttpOption,
 ): Promise<Response<T>> {
   return http<T>({
     url,
@@ -110,11 +132,12 @@ export function get<T = any>(
     signal,
     beforeRequest,
     afterRequest,
+    silent,
   })
 }
 
 export function post<T = any>(
-  { url, data, method = 'POST', headers, onDownloadProgress, signal, beforeRequest, afterRequest }: HttpOption,
+  { url, data, method = 'POST', headers, onDownloadProgress, signal, beforeRequest, afterRequest, silent }: HttpOption,
 ): Promise<Response<T>> {
   return http<T>({
     url,
@@ -125,6 +148,7 @@ export function post<T = any>(
     signal,
     beforeRequest,
     afterRequest,
+    silent,
   })
 }
 

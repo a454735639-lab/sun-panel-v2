@@ -31,12 +31,18 @@ export interface ContainerState {
  *
  * withStats 为 true 时会附带 CPU/内存数据（需读 cgroup，稍慢），
  * 因此仅在卡片上确实要显示指标时才开启。
+ *
+ * 固定传 silent: true —— 这是后台轮询，接口不可用时（容器未挂载、
+ * 守护进程重启中）不应弹全局错误提示。否则每 5 秒弹一个 50 秒的
+ * 提示，会不断堆积把面板糊满，用户只会看到"总是提示网络错误"。
+ * 失败由调用方静默降级（保留上次数据，下轮重试）。
  */
 export const getContainerStates = (containerIds: string[], withStats = true) => {
   return request<{ list: ContainerState[] }>({
     url: api.getContainerStates,
     method: 'post',
     data: { containerIds, withStats, ts: Date.now() },
+    silent: true,
   })
 }
 
