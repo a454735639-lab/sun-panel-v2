@@ -106,8 +106,14 @@ func ErrorDatabase(ctx *gin.Context, errMsg string) {
 
 // 返回错误 数据记录未找到
 func ErrorDataNotFound(ctx *gin.Context) {
-	// ErrorCode(ctx, ERROR_CODE_DATA_RECORD_NOT_FOUND, "未找到数据记录", nil)
-	ErrorByCode(ctx, -1)
+	// 用 1202（No data record found），而不是 -1。
+	//
+	// 原实现走 ErrorByCode(ctx, -1)，而 ErrorCodeMap 里并没有 -1 这个键，
+	// 于是回落到硬编码的 "Server error" —— "没找到数据"被报成"服务器错误"。
+	// 实测影响：未设置访客账号时，/panel/users/getPublicVisitUser 返回
+	// {"code":-1,"msg":"Server error"}，界面以为服务坏了，
+	// 实际只是"该配置项尚未设置"这种正常状态。
+	ErrorByCode(ctx, ERROR_CODE_DATA_RECORD_NOT_FOUND)
 }
 
 func ErrorByCode(ctx *gin.Context, code int) {

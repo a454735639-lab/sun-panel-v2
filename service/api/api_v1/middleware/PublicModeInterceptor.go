@@ -54,7 +54,10 @@ func PublicModeInterceptor(c *gin.Context) {
 	var userId *uint
 	if err := global.SystemSetting.GetValueByInterface(systemSetting.PANEL_PUBLIC_USER_ID, &userId); err == nil && userId != nil {
 		userInfo := models.User{}
-		if err := global.Db.First(&userInfo, "id=?", userId).Error; err != nil {
+		// 必须解引用：把 *uint 直接传给占位符时，GORM 会按指针地址处理
+		// 而不是其指向的值，查询条件永远不成立 → 查不到访客用户 →
+		// 每次都以 1001 结束，表现为"设置了公开账号但公开模式完全不生效"。
+		if err := global.Db.First(&userInfo, "id=?", *userId).Error; err != nil {
 			apiReturn.ErrorCode(c, 1001, global.Lang.Get("login.err_token_expire"), nil)
 			c.Abort()
 			return

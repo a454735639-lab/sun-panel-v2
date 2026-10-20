@@ -20,12 +20,20 @@ func (a *UserConfig) Get(c *gin.Context) {
 	cfg := models.UserConfig{}
 	if err := global.Db.First(&cfg, "user_id=?", userInfo.ID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			apiReturn.ErrorDataNotFound(c)
-			return
-		} else {
-			apiReturn.ErrorDatabase(c, err.Error())
+			// 首次访问时用户还没有保存过任何配置 —— 这是**正常状态**，
+			// 不是错误。返回一份空配置，让前端用默认值渲染面板。
+			//
+			// 原先返回 ErrorDataNotFound（code 1202），前端会当成失败：
+			// 轻则控制台报错，重则面板拿不到配置而显示异常。
+			// 实测场景：新建用户或公开模式下访问一个从未保存过配置的账号。
+			apiReturn.SuccessData(c, gin.H{
+				"panel":        gin.H{},
+				"searchEngine": gin.H{},
+			})
 			return
 		}
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
 	}
 
 	// 处理字段
