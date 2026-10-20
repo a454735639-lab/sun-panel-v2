@@ -19,7 +19,7 @@
       </a>
       <div class="gallery-meta">
         <span class="gallery-name" title="{{ .FileName }}">{{ .FileName }}</span>
-        <button type="button" class="card-btn card-btn--danger" title="删除"
+        <button type="button" class="card-btn card-btn--danger" title="删除" aria-label="删除"
                 hx-post="/hx/gallery/{{ .ID }}/delete"
                 data-confirm-action='{"title": "确认删除文件", "message": "确定删除 {{ .FileName }}？文件会从磁盘移除。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-swap="none" onclick="confirmHx(this, event)">✕</button>

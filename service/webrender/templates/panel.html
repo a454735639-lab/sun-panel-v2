@@ -34,7 +34,7 @@
 
   {{/* 顶栏（悬浮在右上） */}}
   <div class="corner-bar">
-    <button type="button" class="theme-btn" onclick="toggleTheme()" title="切换主题">◐</button>
+    <button type="button" class="theme-btn" onclick="toggleTheme()" title="切换主题" aria-label="切换主题">◐</button>
     <div class="netmode" title="内外网切换">
       <button type="button" class="netmode-btn{{ if eq .NetMode "auto" }} active{{ end }}" hx-post="/hx/netmode/auto" hx-swap="none">自动</button>
       <button type="button" class="netmode-btn{{ if eq .NetMode "lan" }} active{{ end }}" hx-post="/hx/netmode/lan" hx-swap="none">内网</button>
@@ -42,7 +42,7 @@
     </div>
     {{ if .LoggedIn }}
       <div class="user-menu">
-        <button class="user-btn" type="button" title="菜单">▦</button>
+        <button class="user-btn" type="button" title="菜单" aria-label="菜单">▦</button>
         <div class="user-dropdown">
           {{ if .LoggedIn }}
             <button type="button" onclick="toggleSort()">卡片排序</button>
@@ -77,9 +77,9 @@
           <span>{{ .Title }}</span>
           <span class="group-count">{{ len .Items }}</span>
           <span class="group-actions">
-            <button type="button" class="card-btn" title="编辑分组"
+            <button type="button" class="card-btn" title="编辑分组" aria-label="编辑分组"
                     hx-get="/hx/group/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML">✎</button>
-            <button type="button" class="card-btn card-btn--danger" title="删除分组"
+            <button type="button" class="card-btn card-btn--danger" title="删除分组" aria-label="删除分组"
                     hx-post="/hx/group/{{ .ID }}/delete"
                     data-confirm-action='{"title": "确认删除分组", "message": "确定删除分组「{{ .Title }}」？分组内有卡片时会被拒绝。", "okText": "删除分组", "requireInput": "{{ .Title }}", "type": "danger"}'
                     hx-swap="none" onclick="confirmHx(this, event)">✕</button>

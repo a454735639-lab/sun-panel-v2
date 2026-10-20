@@ -6,11 +6,11 @@
         <span class="bm-folder-title">{{ .Title }}</span>
         <span class="bm-folder-count">{{ len .Children }}</span>
         <span class="bm-actions">
-          <button type="button" class="card-btn" title="在文件夹内新建"
+          <button type="button" class="card-btn" title="在文件夹内新建" aria-label="在文件夹内新建"
                   onclick="event.preventDefault();event.stopPropagation();openBookmarkForm({{ .ID }},0)">+</button>
-          <button type="button" class="card-btn" title="编辑"
+          <button type="button" class="card-btn" title="编辑" aria-label="编辑"
                   onclick="event.preventDefault();event.stopPropagation();openBookmarkForm({{ .ID }},1)">✎</button>
-          <button type="button" class="card-btn card-btn--danger" title="删除"
+          <button type="button" class="card-btn card-btn--danger" title="删除" aria-label="删除"
                   hx-post="/hx/bookmark/{{ .ID }}/delete"
                   data-confirm-action='{"title": "确认删除文件夹", "message": "删除「{{ .Title }}」会连同里面的书签一并删除。", "okText": "删除文件夹", "requireInput": "", "type": "danger"}'
                   hx-swap="none"
@@ -34,9 +34,9 @@
         <span class="bm-url">{{ .OpenUrl }}</span>
       </a>
       <span class="bm-actions">
-        <button type="button" class="card-btn" title="编辑"
+        <button type="button" class="card-btn" title="编辑" aria-label="编辑"
                 onclick="openBookmarkForm({{ .ID }},0)">✎</button>
-        <button type="button" class="card-btn card-btn--danger" title="删除"
+        <button type="button" class="card-btn card-btn--danger" title="删除" aria-label="删除"
                 hx-post="/hx/bookmark/{{ .ID }}/delete"
                 data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-swap="none" onclick="confirmHx(this, event)">✕</button>

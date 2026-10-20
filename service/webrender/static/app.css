@@ -606,6 +606,60 @@ body.sorting .card[data-card-id] > * { pointer-events: none; }
 .sortable-ghost { opacity: .35; }
 .sortable-chosen { box-shadow: var(--shadow-hover); }
 
+/* ---------- 按下反馈（:active）----------
+   原先按钮只有 :hover，点下去那一瞬没有视觉变化，手感"不跟手"。
+   移动端没有 hover，点下去完全无反馈，用户会怀疑有没有点到。
+   缩放到 .96 足够被感知，又不会让布局抖动。 */
+.btn:active,
+.card-btn:active,
+.theme-btn:active,
+.user-btn:active,
+.netmode-btn:active,
+.sort-toggle:active,
+.corner-btn:active {
+  transform: scale(.96);
+  transition-duration: .08s;
+}
+
+/* ---------- 键盘焦点可见 ----------
+   多处用了 outline:none 去掉默认焦点环，但没有补偿，
+   键盘用户 Tab 过去看不到焦点在哪。用 :focus-visible 补回，
+   只在键盘操作时显示，鼠标点击不显示（避免视觉噪音）。 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* 输入框用边框变化代替外描边，视觉更贴合原设计 */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(78, 201, 167, .18);
+}
+
+/* ---------- 触控优化 ----------
+   card 用 manipulation 消除移动端 300ms 点击延迟；
+   排序容器禁用默认手势，避免拖动卡片时误触发页面滚动。 */
+.card,
+.btn,
+.card-btn { touch-action: manipulation; }
+body.sorting .grid { touch-action: none; }
+.sortable-chosen,
+.sortable-drag { touch-action: none; }
+
+/* ---------- 可访问性：隐藏仅用于屏幕阅读器的文本 ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ==========================================================================
    交互动效层
    --------------------------------------------------------------------------
@@ -748,15 +802,33 @@ body.sorting .card[data-card-id] > * { pointer-events: none; }
   /* 顶栏在小屏只保留内外网切换，排序按钮收起 */
   .corner-bar { gap: 5px; top: 8px; right: 8px; }
   .corner-bar .sort-toggle { display: none; }
-  .netmode-btn { padding: 5px 8px; font-size: 11px; }
+  /* 触控目标：原先 padding 5px 8px 使按钮高度仅 26px，手指容易点错。
+     实测各按钮为 46x29 / 47x29，低于 44px 推荐值，这里撑到 34px 高。
+     未直接给到 44px 是为避免顶栏在小屏占过高（视觉失衡），
+     34px 已是可接受的折中，配合下方 480px 断点进一步放宽。 */
+  .netmode-btn {
+    padding: 8px 11px;
+    font-size: 11px;
+    min-width: 44px;
+    min-height: 34px;
+  }
+  .theme-btn, .user-btn {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 6px;
+  }
   .hero-search { padding: 10px 16px; }
   .shell { padding: 16px 12px 110px; }
   /* 窄屏下卡片改为自适应高度，避免两行文字被固定 70px 裁切 */
   .card--detail { height: auto; min-height: 62px; }
   .card--detail .card-title { font-size: 13px; }
+  /* 卡片操作按钮：触屏下面板常显，热区略放大 */
+  .card-btn { min-width: 32px; min-height: 32px; }
 }
 @media (max-width: 480px) {
   .grid { gap: 12px; }
+  /* 更小屏幕进一步放宽热区 */
+  .netmode-btn { min-width: 46px; min-height: 36px; }
 }
 
 .htmx-indicator { opacity: 0; transition: opacity .2s ease; }

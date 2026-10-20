@@ -17,9 +17,9 @@
           <div class="note-head">
             <span class="note-title">{{ .Title }}</span>
             <span class="bm-actions">
-              <button type="button" class="card-btn" title="编辑"
+              <button type="button" class="card-btn" title="编辑" aria-label="编辑"
                       onclick="openNoteForm({{ .ID }})">✎</button>
-              <button type="button" class="card-btn card-btn--danger" title="删除"
+              <button type="button" class="card-btn card-btn--danger" title="删除" aria-label="删除"
                       hx-post="/hx/notepad/{{ .ID }}/delete"
                       data-confirm-action='{"title": "确认删除便签", "message": "确定删除便签「{{ .Title }}」？", "okText": "删除", "requireInput": "", "type": "danger"}'
                       hx-swap="none" onclick="confirmHx(this, event)">✕</button>

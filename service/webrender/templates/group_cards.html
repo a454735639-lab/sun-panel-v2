@@ -30,10 +30,10 @@
         {{ if .WidgetType }}<span class="card-widget" data-widget-for="{{ .ID }}">…</span>{{ end }}
       </span>
       <span class="card-actions">
-        <button type="button" class="card-btn" title="编辑"
+        <button type="button" class="card-btn" title="编辑" aria-label='{{ printf "编辑 %s" .Title }}'
                 hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
                 onclick="event.preventDefault();event.stopPropagation()">✎</button>
-        <button type="button" class="card-btn card-btn--danger" title="删除"
+        <button type="button" class="card-btn card-btn--danger" title="删除" aria-label='{{ printf "删除 %s" .Title }}'
                 hx-post="/hx/card/{{ .ID }}/delete" data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
                 onclick="confirmHx(this, event)">✕</button>
@@ -72,10 +72,10 @@ CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .Containe
         {{ template "dockerdot" .ContainerState }}
       {{ end }}
       <span class="card-actions">
-        <button type="button" class="card-btn" title="编辑"
+        <button type="button" class="card-btn" title="编辑" aria-label='{{ printf "编辑 %s" .Title }}'
                 hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
                 onclick="event.preventDefault();event.stopPropagation()">✎</button>
-        <button type="button" class="card-btn card-btn--danger" title="删除"
+        <button type="button" class="card-btn card-btn--danger" title="删除" aria-label='{{ printf "删除 %s" .Title }}'
                 hx-post="/hx/card/{{ .ID }}/delete" data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
                 onclick="confirmHx(this, event)">✕</button>
@@ -106,10 +106,10 @@ CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .Containe
       {{ end }}
       {{ if .WidgetType }}<span class="card-widget" data-widget-for="{{ .ID }}">…</span>{{ end }}
       <span class="card-actions">
-        <button type="button" class="card-btn" title="编辑"
+        <button type="button" class="card-btn" title="编辑" aria-label='{{ printf "编辑 %s" .Title }}'
                 hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
                 onclick="event.preventDefault();event.stopPropagation()">✎</button>
-        <button type="button" class="card-btn card-btn--danger" title="删除"
+        <button type="button" class="card-btn card-btn--danger" title="删除" aria-label='{{ printf "删除 %s" .Title }}'
                 hx-post="/hx/card/{{ .ID }}/delete" data-confirm-action='{"title": "确认删除", "message": "确定删除「{{ .Title }}」？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                 hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
                 onclick="confirmHx(this, event)">✕</button>
