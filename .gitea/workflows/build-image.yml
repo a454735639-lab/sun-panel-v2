@@ -116,18 +116,23 @@ jobs:
       - name: 7. 冒烟运行（端口 3002 可连）
         run: |
           set -eu
+          # 注意：本镜像是 alpine，只有 busybox sh，**不支持 /dev/tcp**（那是 bash 特性）。
+          # 用容器自带的 wget 探测（镜像里已装 curl/wget/nc）。
           NAME=sp-smoke-$$
           docker run -d --name "$NAME" "$IMAGE:$VERSION" >/dev/null
           trap 'docker rm -f "$NAME" >/dev/null 2>&1 || true' EXIT
           ok=0
           for i in $(seq 1 30); do
-            code="$(docker exec "$NAME" sh -c 'wget -q -O- --timeout=3 http://127.0.0.1:3002/ 2>/dev/null; echo "HTTP$?"' || true)"
-            if docker exec "$NAME" sh -c 'exec 3<>/dev/tcp/127.0.0.1/3002' 2>/dev/null; then
-              echo "第 $i 次探测：3002 已监听"; ok=1; break
+            if docker exec "$NAME" wget -q -O /dev/null --timeout=3 http://127.0.0.1:3002/healthz 2>/dev/null; then
+              echo "第 $i 次探测：3002 已就绪"
+              ok=1
+              break
             fi
             sleep 2
           done
-          [ "$ok" = 1 ]
+          [ "$ok" = 1 ] || { echo "3002 未就绪，容器日志："; docker logs "$NAME" 2>&1 | tail -20; exit 1; }
+          echo "--- HTTP 状态 ---"
+          docker exec "$NAME" curl -s -o /dev/null -w 'HTTP %{http_code}\n' --max-time 3 http://127.0.0.1:3002/healthz
           echo "--- 启动日志 ---"
           docker logs "$NAME" 2>&1 | head -12 || true
 
@@ -150,6 +155,12 @@ jobs:
           docker image inspect "$IMAGE:$VERSION" --format 'pulled={{.Architecture}}/{{.Os}}'
           NAME=sp-pull-$$
           docker run -d --name "$NAME" "$IMAGE:$VERSION" >/dev/null
-          sleep 8
-          docker exec "$NAME" sh -c 'exec 3<>/dev/tcp/127.0.0.1/3002' && echo "拉回的镜像可正常启动并监听 3002"
+          ok=0
+          for i in $(seq 1 20); do
+            if docker exec "$NAME" wget -q -O /dev/null --timeout=3 http://127.0.0.1:3002/healthz 2>/dev/null; then
+              echo "拉回的镜像可正常启动并响应 3002"; ok=1; break
+            fi
+            sleep 2
+          done
           docker rm -f "$NAME" >/dev/null 2>&1 || true
+          [ "$ok" = 1 ]
