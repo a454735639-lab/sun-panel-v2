@@ -22,7 +22,21 @@ import (
 // 返回结构保持 app.js 现有的 res.data.list 约定，避免改动前端解析逻辑。
 func DockerStates(c *gin.Context) {
 	if _, ok := currentUser(c); !ok {
-		c.String(http.StatusUnauthorized, "")
+		// 这里刻意返回 JSON 错误码（HTTP 200 + code 1000），
+		// 而不是本文件同层其它端点用的裸 HTTP 401。
+		//
+		// 原因：本端点**同时被两套前端调用** ——
+		//   - SSR 版 app.js 用原生 fetch，非 2xx 时静默跳过，两种写法都行；
+		//   - Vue 版走 axios，非 2xx 会进入错误拦截器 → failHandler。
+		//     虽然前端已给轮询加了 silent，但未登录时返回 401 仍属"异常状态码"，
+		//     与 API 层（apiReturn.ErrorByCode(c, 1000)）的约定不一致，
+		//     会让调用方难以统一处理。
+		// 统一成 JSON 错误码后，前端可据 code=1000 走"跳登录"分支，
+		// 不产生任何错误提示 —— 与其它面板接口行为一致。
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1000,
+			"msg":  "Not logged in yet",
+		})
 		return
 	}
 

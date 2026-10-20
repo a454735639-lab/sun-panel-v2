@@ -70,8 +70,16 @@ function http<T = any>(
     }
 
     if (res.data.code === 1000) {
-      router.push({ path: '/login' })
-      authStore.removeToken()
+      // 静默请求（后台轮询）不触发跳转。
+      //
+      // 原因：轮询失败往往只是短暂状态（服务重启中、token 刚过期尚未刷新），
+      // 若每 2-5 秒就把用户踢到登录页，会在毫无预兆的情况下打断正在进行的操作，
+      // 比弹个提示更糟。用户主动操作（非 silent）时才跳转 ——
+      // 那时他确实需要重新登录。
+      if (!silent) {
+        router.push({ path: '/login' })
+        authStore.removeToken()
+      }
       return res.data
     }
 
