@@ -189,7 +189,26 @@ func isNatLoopback(clientIP, serverPublicIP string) bool {
 	return clientIP == serverPublicIP
 }
 
-// pickUrl 按客户端网络环境选择打开地址
+// loadUrlRules 读取用户的地址规则（按 sort 升序）。
+// 出错或未配置时返回 nil，调用方回落内置 IP 判断。
+func loadUrlRules(userId uint) []models.UrlRule {
+	if global.Db == nil || userId == 0 {
+		return nil
+	}
+	var rules []models.UrlRule
+	if err := global.Db.Where("user_id = ? AND enabled = ?", userId, models.INT_TURE).
+		Order("sort asc, id asc").Find(&rules).Error; err != nil {
+		return nil
+	}
+	return rules
+}
+
+// pickUrl 按客户端网络环境选择打开地址。
+//
+// 优先级：
+//  1. 显式网络模式（lan/wan）—— 用户手动切换，最高优先
+//  2. 地址规则匹配 —— 逐条匹配，命中即用
+//  3. 内置 IP 判断 —— 无规则命中时的兜底，保持与改造前一致
 func pickUrl(c *gin.Context, wan, lan string) string {
 	wan = strings.TrimSpace(wan)
 	lan = strings.TrimSpace(lan)
@@ -205,6 +224,19 @@ func pickUrl(c *gin.Context, wan, lan string) string {
 		return lan
 	case "wan":
 		return wan
+	}
+
+	// 地址规则：对内外网两个地址都尝试匹配
+	// （用户写的 pattern 可能针对内网域名，也可能针对外网域名）
+	if user, ok := currentUser(c); ok {
+		if rules := loadUrlRules(user.ID); len(rules) > 0 {
+			if t, hit := models.PickUrlByRules(rules, lan); hit {
+				return t
+			}
+			if t, hit := models.PickUrlByRules(rules, wan); hit {
+				return t
+			}
+		}
 	}
 
 	clientIP := getClientIP(c)

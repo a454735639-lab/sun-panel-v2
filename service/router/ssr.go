@@ -58,6 +58,11 @@ func InitSSR(rootRouter *gin.Engine) {
 		hx.POST("/import", pages.Import)
 		hx.POST("/user/save", pages.UserSave)
 
+		// 地址规则
+		hx.POST("/rule/save", pages.RuleSave)
+		hx.GET("/rule/:id/edit", pages.RuleEdit)
+		hx.POST("/rule/:id/delete", pages.RuleDelete)
+
 		// 图库
 		hx.POST("/gallery/upload", pages.GalleryUpload)
 		hx.POST("/gallery/:id/delete", pages.GalleryDelete)

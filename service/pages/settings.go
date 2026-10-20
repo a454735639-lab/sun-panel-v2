@@ -18,6 +18,7 @@ import (
 var settingsTabs = map[string]bool{
 	"export-import": true, "style": true, "docker": true, "scan": true,
 	"gallery": true, "users": true, "user": true, "about": true,
+	"rules": true,
 }
 
 // Settings 系统应用页
@@ -49,6 +50,9 @@ func Settings(c *gin.Context) {
 	switch tab {
 	case "style":
 		// Panel 已在上面注入
+
+	case "rules":
+		data["Rules"] = loadRules(user.ID)
 
 	case "docker":
 		data["DockerAvailable"] = global.DockerClient != nil

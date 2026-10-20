@@ -1,0 +1,117 @@
+{{ define "tab_rules" }}
+<h3 class="tab-title">地址规则</h3>
+<p class="tab-desc">
+  按规则为不同站点指定打开地址。<strong>自上而下逐条匹配，命中第一条即生效</strong>；
+  全部不命中时，回落到内置的内外网判断。
+</p>
+
+<div class="tab-block">
+  <h4>规则说明</h4>
+  <ul class="hint" style="margin:0;padding-left:18px;line-height:1.9">
+    <li><code>*</code> 匹配任意字符，例如 <code>*.example.com</code> 匹配所有子域名</li>
+    <li>支持端口，例如 <code>example.com:8080</code></li>
+    <li>不区分大小写；<code>nas.local</code> 可匹配 <code>nas.local:5000</code>（端口可省）</li>
+    <li>不支持正则表达式（避免误写导致性能问题）</li>
+  </ul>
+</div>
+
+{{ if .Rules }}
+<div class="tab-block">
+  <h4>已有规则（{{ len .Rules }} 条）</h4>
+  <table class="docker-table" style="width:100%">
+    <thead>
+      <tr>
+        <th style="width:36px">序</th>
+        <th>匹配模式</th>
+        <th>打开地址</th>
+        <th style="width:70px">状态</th>
+        <th style="width:130px">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{ range .Rules }}
+      <tr>
+        <td>{{ .Sort }}</td>
+        <td><code>{{ .Pattern }}</code>{{ if .Description }}<br><span class="hint">{{ .Description }}</span>{{ end }}</td>
+        <td style="word-break:break-all">{{ .Target }}</td>
+        <td>{{ if eq .Enabled 1 }}<span style="color:#4ec9a7">启用</span>{{ else }}<span class="hint">停用</span>{{ end }}</td>
+        <td>
+          <button type="button" class="btn btn--sm"
+                  hx-get="/hx/rule/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML">编辑</button>
+          <button type="button" class="btn btn--sm btn--danger"
+                  hx-post="/hx/rule/{{ .ID }}/delete"
+                  data-confirm-action='{"title": "删除规则", "message": "确定删除规则「{{ .Pattern }}」？", "okText": "删除", "requireInput": "", "type": "danger"}'
+                  hx-target="closest tr" hx-swap="outerHTML"
+                  onclick="confirmHx(this, event)">删除</button>
+        </td>
+      </tr>
+      {{ end }}
+    </tbody>
+  </table>
+</div>
+{{ else }}
+<div class="tab-block">
+  <p class="hint">还没有配置任何规则。未配置时，使用内置的内外网判断。</p>
+</div>
+{{ end }}
+
+<div class="tab-block">
+  <h4>新增规则</h4>
+  <form hx-post="/hx/rule/save" hx-target="#rules-result" hx-swap="innerHTML" class="inline-form">
+    <div class="field">
+      <label class="field-label">匹配模式</label>
+      <input type="text" name="pattern" placeholder="*.example.com:8080" required>
+    </div>
+    <div class="field">
+      <label class="field-label">打开地址</label>
+      <input type="text" name="target" placeholder="http://10.0.0.1:8080" required>
+    </div>
+    <div class="field">
+      <label class="field-label">备注（可选）</label>
+      <input type="text" name="description" placeholder="例如：家里路由器">
+    </div>
+    <div class="field">
+      <label class="field-label">顺序</label>
+      <input type="number" name="sort" value="0" style="width:90px">
+    </div>
+    <label class="field-label" style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" name="enabled" value="1" checked> 启用
+    </label>
+    <button type="submit" class="btn btn--primary">添加规则</button>
+  </form>
+  <div id="rules-result"></div>
+</div>
+{{ end }}
+
+
+{{ define "rule_editor" }}
+<div class="confirm-dialog" style="max-width:560px">
+  <h3 class="tab-title">编辑规则</h3>
+  <form hx-post="/hx/rule/save" hx-target="#modal-host" hx-swap="innerHTML">
+    <input type="hidden" name="id" value="{{ .Rule.ID }}">
+    <div class="field">
+      <label class="field-label">匹配模式</label>
+      <input type="text" name="pattern" value="{{ .Rule.Pattern }}" required>
+    </div>
+    <div class="field">
+      <label class="field-label">打开地址</label>
+      <input type="text" name="target" value="{{ .Rule.Target }}" required>
+    </div>
+    <div class="field">
+      <label class="field-label">备注</label>
+      <input type="text" name="description" value="{{ .Rule.Description }}">
+    </div>
+    <div class="field">
+      <label class="field-label">顺序</label>
+      <input type="number" name="sort" value="{{ .Rule.Sort }}" style="width:90px">
+    </div>
+    <label class="field-label" style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" name="enabled" value="1" {{ if eq .Rule.Enabled 1 }}checked{{ end }}> 启用
+    </label>
+    <div class="confirm-actions">
+      <button type="button" class="btn" onclick="document.getElementById('modal-host').innerHTML=''">取消</button>
+      <button type="submit" class="btn btn--primary">保存</button>
+    </div>
+  </form>
+</div>
+{{ end }}

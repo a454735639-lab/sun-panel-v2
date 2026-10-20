@@ -127,6 +127,7 @@ func CreateDatabase(driver string, db *gorm.DB) error {
 		&models.Bookmark{},
 		&models.Notepad{},
 		&models.SearchEngine{},
+		&models.UrlRule{}, // 地址匹配规则
 	)
 
 	return err

@@ -89,16 +89,27 @@ func Export(c *gin.Context) {
 	global.Db.Where("user_id = ?", user.ID).Order("sort asc").Find(&rawCards)
 
 	payload := gin.H{
-		"version":   1,
+		"version":    CurrentBackupVersion,
+		"app":        "sun-panel-v2",
 		"exportedAt": time.Now().Format(time.RFC3339),
-		"groups":    rawGroups,
-		"cards":     rawCards,
+		"groups":     rawGroups,
+		"cards":      rawCards,
 		"groupCount": len(groups),
 	}
 	b, _ := json.MarshalIndent(payload, "", "  ")
 	fn := "sunpanel-backup-" + time.Now().Format("20060102-150405") + ".json"
 	c.Header("Content-Disposition", "attachment; filename=\""+fn+"\"")
 	c.Data(http.StatusOK, "application/json", b)
+}
+
+// backupPayload 备份文件结构。
+//
+// Version 用 interface{} 接收，再用 normalizeBackupVersion 归一化：
+// 备份文件可被手工编辑，version 可能是 1 / "1" / 1.0。
+type backupPayload struct {
+	Version int                     `json:"-"`
+	Groups  []models.ItemIconGroup  `json:"groups"`
+	Cards   []models.ItemIcon       `json:"cards"`
 }
 
 // Import 导入配置（整体替换，事务）
@@ -119,18 +130,49 @@ func Import(c *gin.Context) {
 		return
 	}
 	defer f.Close()
-	raw, err := io.ReadAll(f)
+
+	// 限制备份文件大小，避免超大文件打满内存
+	const maxBackupBytes = 64 << 20 // 64 MB
+	raw, err := io.ReadAll(io.LimitReader(f, maxBackupBytes+1))
 	if err != nil {
 		c.String(http.StatusInternalServerError, err.Error())
 		return
 	}
-	var payload struct {
-		Groups []models.ItemIconGroup `json:"groups"`
-		Cards  []models.ItemIcon      `json:"cards"`
+	if len(raw) > maxBackupBytes {
+		c.String(http.StatusBadRequest, "备份文件过大（超过 64MB）")
+		return
 	}
+
+	// 先取 version，再决定是否按当前结构解析。
+	// 用 map 读一次原始值，避免结构体字段类型限制导致解析失败。
+	var head struct {
+		Version interface{} `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &head); err != nil {
+		c.String(http.StatusBadRequest, "文件格式错误："+err.Error())
+		return
+	}
+
+	ver := normalizeBackupVersion(head.Version)
+	chk := checkBackupVersion(ver)
+	if !chk.OK {
+		// 版本过高：拒绝，避免静默丢数据
+		c.String(http.StatusBadRequest, chk.Reason)
+		return
+	}
+
+	var payload backupPayload
 	if err := json.Unmarshal(raw, &payload); err != nil {
 		c.String(http.StatusBadRequest, "文件格式错误："+err.Error())
 		return
+	}
+	payload.Version = ver
+
+	if chk.Migrate {
+		if err := migrateBackup(ver, &payload); err != nil {
+			c.String(http.StatusBadRequest, "备份迁移失败："+err.Error())
+			return
+		}
 	}
 
 	tx := global.Db.Begin()

@@ -9,6 +9,7 @@
       </div>
       <a class="settings-item{{ if eq .Tab "export-import" }} active{{ end }}" href="/settings/export-import">导出导入</a>
       <a class="settings-item{{ if eq .Tab "style" }} active{{ end }}" href="/settings/style">个性化设置</a>
+      <a class="settings-item{{ if eq .Tab "rules" }} active{{ end }}" href="/settings/rules">地址规则</a>
       <a class="settings-item{{ if eq .Tab "docker" }} active{{ end }}" href="/settings/docker">Docker</a>
       <a class="settings-item{{ if eq .Tab "scan" }} active{{ end }}" href="/settings/scan">扫描导入</a>
       <a class="settings-item{{ if eq .Tab "gallery" }} active{{ end }}" href="/settings/gallery">图库</a>
@@ -19,6 +20,7 @@
     <section class="settings-content" id="settings-content">
       {{ if eq .Tab "export-import" }}{{ template "tab_export" . }}{{ end }}
       {{ if eq .Tab "style" }}{{ template "tab_style" . }}{{ end }}
+      {{ if eq .Tab "rules" }}{{ template "tab_rules" . }}{{ end }}
       {{ if eq .Tab "docker" }}{{ template "tab_docker" . }}{{ end }}
       {{ if eq .Tab "scan" }}{{ template "tab_scan" . }}{{ end }}
       {{ if eq .Tab "gallery" }}{{ template "tab_gallery" . }}{{ end }}

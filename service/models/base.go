@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	_ "gorm.io/driver/mysql"
 	"github.com/glebarez/sqlite"
 	_ "github.com/glebarez/sqlite"
+	_ "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )
@@ -52,6 +52,8 @@ func calcPage(page_size, limit_size int) (offset, limit int) {
 
 var Db *gorm.DB
 
+// GetDb 已废弃：实际建表在 initialize/database/connect.go 的 AutoMigrate。
+// 保留仅为兼容历史引用，新模型请注册到 connect.go。
 func GetDb() (*gorm.DB, error) {
 	var db *gorm.DB
 	var err error
