@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { NButton, NCard, NTag } from 'naive-ui'
 import { t } from '@/locales'
 import UrlRuleManager from './UrlRuleManager.vue'
+import DiagnosticsPanel from './DiagnosticsPanel.vue'
 
 // 自动判断内外网测试
 const testStatus = ref<'idle' | 'testing' | 'success_lan' | 'success_wan' | 'failed'>('idle')
@@ -125,6 +126,9 @@ onMounted(() => {
          自动判断决定"默认走内网还是外网"，
          规则则处理"某些站点要单独指定地址"的例外。 -->
     <UrlRuleManager />
+
+    <!-- 诊断日志：把失败请求与 JS 异常收集起来，便于用户一键反馈 -->
+    <DiagnosticsPanel />
   </div>
 </template>
 

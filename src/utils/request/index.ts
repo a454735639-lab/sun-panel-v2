@@ -53,19 +53,30 @@ function http<T = any>(
       return res.data
 
     if (res.data.code === 1001) {
-      // 避免重复弹窗
-      if (loginMessageShow === false) {
-        loginMessageShow = true
-        message.warning(t('api.loginExpires'), {
-          // message.warning('登录过期', {
-          onLeave() {
-            loginMessageShow = false
-          },
-        })
+      // 静默请求（后台轮询）不弹提示、也不跳转。
+      //
+      // 背景：本分支原先是无条件弹「登录已过期」+ 跳登录页 + 清 token。
+      // 对用户主动操作这是对的，但对后台轮询是灾难 ——
+      // 监控组件每 2 秒轮询一次，token 一旦失效就会：
+      //   弹提示 → 跳登录页 → 清 token → 下轮再失败 → 循环
+      // 表现为提示堆叠、页面反复被踢走。
+      //
+      // 实测本项目的认证接口在未登录/过期时返回 code=1001
+      // （而 pages 层旧接口返回裸 401，见 docker_states.go 的说明）。
+      // 因此这里必须与 failHandler 一样受 silent 约束。
+      if (!silent) {
+        // 避免重复弹窗
+        if (loginMessageShow === false) {
+          loginMessageShow = true
+          message.warning(t('api.loginExpires'), {
+            onLeave() {
+              loginMessageShow = false
+            },
+          })
+        }
+        router.push({ path: '/login' })
+        authStore.removeToken()
       }
-
-      router.push({ path: '/login' })
-      authStore.removeToken()
       return res.data
     }
 
@@ -125,8 +136,12 @@ function http<T = any>(
   headers.token = authStore.token
   headers.lang = appStore.language
   return method === 'GET'
-    ? request.get(url, { params, headers, signal, onDownloadProgress }).then(successHandler, failHandler)
-    : request.post(url, params, { headers, signal, onDownloadProgress }).then(successHandler, failHandler)
+    // 把 silent 一并放进 axios config。
+    // 作用有二：① 诊断日志能标出"这条失败来自静默请求"，
+    // 一眼看出它本不该弹提示；② 便于后续在拦截器层统一处理。
+    // axios 会忽略它不认识的自定义字段，不影响请求本身。
+    ? request.get(url, { params, headers, signal, onDownloadProgress, silent }).then(successHandler, failHandler)
+    : request.post(url, params, { headers, signal, onDownloadProgress, silent }).then(successHandler, failHandler)
 }
 
 export function get<T = any>(
