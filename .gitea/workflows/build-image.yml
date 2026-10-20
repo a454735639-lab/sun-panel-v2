@@ -125,9 +125,13 @@ jobs:
           # 校验逻辑放在 scripts/check-baseurl.sh，而非内联在此处：
           # 内联时 shell 与 YAML 的引号转义会互相干扰（实测踩过坑），
           # 且独立脚本可在本地直接验证。
+          #
+          # 注意挂载路径用 $SRC 而非 $PWD：本仓库的 act_runner 不预置仓库内容、
+          # 也不支持 actions/checkout，源码是 git clone 到 /tmp/sp-src（见第 2 步），
+          # 当前工作目录并不是仓库根。
           echo "--- baseURL 校验 ---"
           docker run --rm --entrypoint sh \
-            -v "$PWD/scripts:/scripts:ro" \
+            -v "$SRC/scripts:/scripts:ro" \
             "$IMAGE:$VERSION" -c 'sh /scripts/check-baseurl.sh /app/web' \
             || { echo "前端 baseURL 为空，请求会打到错误路径（检查 Dockerfile 是否 COPY .env）"; exit 1; }
 
