@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { ItemIcon } from '@/components/common'
 import { PanelPanelConfigStyleEnum } from '@/enums'
+import { parseContainerId } from '@/hooks/useDockerStates'
 
 interface Prop {
   itemInfo?: Panel.ItemInfo
@@ -16,6 +17,11 @@ interface Prop {
 const props = withDefaults(defineProps<Prop>(), {
   size: 70,
 })
+
+// 由首页提供的容器状态查询函数（见 home/index.vue）。
+// 用 inject 而非在卡片内自行轮询：面板上可能有多张 Docker 卡片，
+// 集中轮询一次即可，避免请求数随卡片数增长。
+const stateOf = inject<(id: string) => DockerStateLike | undefined>('dockerStateOf', () => undefined)
 
 const defaultBackground = '#2a2a2a6b'
 
@@ -42,6 +48,66 @@ const itemIconSize = computed(() => {
     return Math.round(props.size * 0.8)
   }
 })
+
+// ---- Docker 容器卡片状态 ----
+// cardType=2 表示这是 Docker 卡片，expandParam 里存着 containerId
+const containerId = computed(() => {
+  if (props.itemInfo?.cardType !== 2) return ''
+  return parseContainerId(props.itemInfo?.expandParam)
+})
+
+const containerState = computed(() => {
+  if (!containerId.value) return undefined
+  return stateOf(containerId.value)
+})
+
+// 状态点颜色：运行中=绿、已停止/退出=红、其它（创建中/重启中）=黄
+const stateClass = computed(() => {
+  const st = containerState.value
+  if (!st) return 'unknown'
+  if (st.running) return 'running'
+  const s = (st.state || '').toLowerCase()
+  if (s === 'exited' || s === 'dead') return 'stopped'
+  return 'pending'
+})
+
+function fmtBytes(v?: number) {
+  if (!v || v <= 0) return '0 B'
+  const u = ['B', 'KB', 'MB', 'GB', 'TB']
+  let i = 0
+  let n = v
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++ }
+  return (i === 0 ? n.toFixed(0) : n.toFixed(n >= 100 ? 0 : 1)) + u[i]
+}
+
+// 悬停提示：容器名 + 状态 + 指标
+const stateTitle = computed(() => {
+  const st = containerState.value
+  if (!st) return ''
+  let t = st.name + ' · ' + st.status
+  if (st.running) {
+    t += ' · CPU:' + (st.cpuPercent ?? 0).toFixed(1) + '% RAM:' + fmtBytes(st.memUsage)
+  }
+  return t
+})
+
+// 卡片右下角显示的指标文本（仅运行中显示，避免占位）
+const metricsText = computed(() => {
+  const st = containerState.value
+  if (!st || !st.running) return ''
+  return 'CPU ' + (st.cpuPercent ?? 0).toFixed(0) + '% · ' + fmtBytes(st.memUsage)
+})
+
+// 类型占位：避免从 api 直接 import 造成循环依赖
+interface DockerStateLike {
+  id: string
+  name: string
+  state: string
+  status: string
+  cpuPercent: number
+  memUsage: number
+  running: boolean
+}
 </script>
 
 <template>
@@ -49,8 +115,10 @@ const itemIconSize = computed(() => {
     <!-- 详情图标 -->
     <div
       v-if="style === PanelPanelConfigStyleEnum.info"
-      class="app-icon-info w-full rounded-2xl  transition-all duration-200 hover:shadow-[0_0_20px_10px_rgba(0,0,0,0.2)] flex"
+      class="app-icon-info w-full rounded-2xl  transition-all duration-200 hover:shadow-[0_0_20px_10px_rgba(0,0,0,0.2)] flex relative"
       :style="{ background: itemInfo?.icon?.backgroundColor || defaultBackground }"
+      :data-container-id="containerId || undefined"
+      :title="stateTitle || undefined"
     >
       <!-- 图标 -->
       <div class="app-icon-info-icon">
@@ -69,17 +137,38 @@ const itemIconSize = computed(() => {
           <div v-if="!iconTextInfoHideDescription" class="app-icon-info-text-box-description">
             {{ itemInfo?.description }}
           </div>
+          <!-- 容器指标：仅 Docker 卡片且容器运行中时显示。
+               放在描述下方，不占据额外空间，无数据时整行不渲染。 -->
+          <div v-if="metricsText" class="app-icon-metrics app-icon-info-text-box-metrics">
+            {{ metricsText }}
+          </div>
         </div>
       </div>
+
+      <!-- Docker 状态点：卡片右上角 -->
+      <span
+        v-if="containerId"
+        class="docker-dot"
+        :class="'docker-dot--' + stateClass"
+        :title="stateTitle"
+      />
     </div>
 
     <!-- 极简(小)图标（APP） -->
     <div v-if="style === PanelPanelConfigStyleEnum.icon" class="app-icon-small">
       <div
-        class="app-icon-small-icon overflow-hidden rounded-2xl sunpanel mx-auto rounded-2xl transition-all duration-200 hover:shadow-[0_0_20px_10px_rgba(0,0,0,0.2)]"
-        :title="itemInfo?.description"
+        class="app-icon-small-icon overflow-hidden rounded-2xl sunpanel mx-auto rounded-2xl transition-all duration-200 hover:shadow-[0_0_20px_10px_rgba(0,0,0,0.2)] relative"
+        :title="stateTitle || itemInfo?.description"
+        :data-container-id="containerId || undefined"
       >
         <ItemIcon :item-icon="itemInfo?.icon" :size="itemIconSize" />
+        <!-- Docker 状态点 -->
+        <span
+          v-if="containerId"
+          class="docker-dot"
+          :class="'docker-dot--' + stateClass"
+          :title="stateTitle"
+        />
       </div>
       <div
         v-if="!iconTextIconHideTitle"
@@ -95,11 +184,58 @@ const itemIconSize = computed(() => {
       >
         {{ itemInfo?.description }}
       </div>
+      <!-- 容器指标：小卡同样要显示，否则用户看不出容器是否吃满资源。
+           用比描述更小的字号，并在无数据时不渲染整行。 -->
+      <div
+        v-if="metricsText"
+        class="app-icon-metrics app-icon-small-metrics text-center opacity-70 mt-[1px]"
+        :style="{ color: iconTextColor }"
+      >
+        {{ metricsText }}
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* ---------- Docker 容器状态点 ----------
+   绿=运行中，红=已停止/退出，黄=过渡态（创建中/重启中），灰=状态未知。
+   用 absolute 定位在卡片右上角，不参与布局，因此不会挤压标题与描述。
+   加白色描边是为了在深浅色卡片背景上都能看清。 */
+.docker-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55);
+  pointer-events: auto;
+  z-index: 2;
+}
+.docker-dot--running {
+  background: #22c55e;
+  /* 运行中加一圈柔和光晕，让"在线"更醒目 */
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55), 0 0 6px rgba(34, 197, 94, 0.8);
+}
+.docker-dot--stopped { background: #ef4444; }
+.docker-dot--pending { background: #eab308; }
+.docker-dot--unknown { background: #9ca3af; }
+
+/* 容器指标：小字、半透明，避免与标题争夺注意力。
+   .app-icon-metrics 是两种卡片样式共用的标记类，
+   便于统一查询（测试与样式）而不必分别匹配。 */
+.app-icon-info-text-box-metrics,
+.app-icon-small-metrics {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  line-height: 1.3;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 响应式图标块设计 */
 .app-icon-info-icon {
   width: min(70px, 100%);

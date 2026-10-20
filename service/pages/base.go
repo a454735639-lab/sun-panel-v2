@@ -56,14 +56,49 @@ type GroupVM struct {
 
 // ---- 认证 ----
 
-// currentUser 从请求中解析当前用户（先看 token 头，再回落 cookie）
-func currentUser(c *gin.Context) (models.User, bool) {
-	token := strings.TrimSpace(c.GetHeader("token"))
-	if token == "" {
-		if v, err := c.Cookie(SessionCookieName); err == nil {
-			token = strings.TrimSpace(v)
+// resolveRequestToken 按优先级从请求中提取 token。
+//
+// 抽成独立函数是为了可测试：鉴权来源的优先级容易在后续改动中被破坏，
+// 而这类错误只在"某种前端登录不上"时才暴露，很难在生产中发现。
+//
+// 优先级：Authorization: Bearer → token 头 → Token 头 → Cookie。
+// Bearer 排最前是因为它最明确（显式声明了 scheme），
+// 其次是自定义头，最后才是 Cookie（浏览器会隐式携带，最不确定）。
+func resolveRequestToken(c *gin.Context) string {
+	// 1) Authorization: Bearer xxx（scheme 大小写不敏感，RFC 7235）
+	if h := c.GetHeader("Authorization"); h != "" {
+		if len(h) > 7 && strings.EqualFold(h[:7], "bearer ") {
+			if t := strings.TrimSpace(h[7:]); t != "" {
+				return t
+			}
 		}
 	}
+	// 2) token 头（原版前端 / SSR htmx）
+	if t := strings.TrimSpace(c.GetHeader("token")); t != "" {
+		return t
+	}
+	// 3) Token 头（历史大小写变体）
+	if t := strings.TrimSpace(c.GetHeader("Token")); t != "" {
+		return t
+	}
+	// 4) Cookie（SSR 服务端会话；浏览器隐式携带）
+	if v, err := c.Cookie(SessionCookieName); err == nil {
+		if t := strings.TrimSpace(v); t != "" {
+			return t
+		}
+	}
+	return ""
+}
+
+// currentUser 从请求中解析当前用户。
+//
+// 支持三种 token 来源，见 resolveRequestToken。
+// 之所以要兼容 Bearer：本文件里的接口（如 /api/docker/container/getContainerStates）
+// 原先只认 token 头与 Cookie —— 那是 SSR 版的设计。Vue 前端统一发
+// Authorization: Bearer，若不兼容则一律 401。
+// 实测该端点因此对 Vue 不可用（卡片上的容器状态灯一直拿不到数据）。
+func currentUser(c *gin.Context) (models.User, bool) {
+	token := resolveRequestToken(c)
 	if token == "" {
 		return models.User{}, false
 	}

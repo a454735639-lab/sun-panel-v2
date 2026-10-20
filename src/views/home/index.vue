@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VueDraggable } from 'vue-draggable-plus'
 import { NBackTop, NButton, NButtonGroup, NDropdown, NModal, NSkeleton, NSpin, useDialog, useMessage } from 'naive-ui'
-import { nextTick, onMounted, onActivated, ref, h } from 'vue'
+import { nextTick, onMounted, onActivated, ref, h, watch, provide } from 'vue'
 import { AppIcon, AppStarter, EditItem, NotePad } from './components'
 import { Clock, SystemMonitor } from '@/components/deskModule'
 import SearchBoxWithSuggestions from '@/components/deskModule/SearchBoxWithSuggestions/index.vue'
@@ -18,6 +18,7 @@ import { t } from '@/locales'
 import {  computed } from "vue"
 import { useWindowSize } from "@vueuse/core"
 import { NDrawer, NDrawerContent, NTree,  } from "naive-ui"
+import { useDockerStates, setWatchedContainers, parseContainerId } from '@/hooks/useDockerStates'
 interface ItemGroup extends Panel.ItemIconGroup {
   sortStatus?: boolean
   hoverStatus: boolean
@@ -111,6 +112,36 @@ const settingModalShow = ref(false)
 
 const items = ref<ItemGroup[]>([])
 const filterItems = ref<ItemGroup[]>([])
+
+/* ---------- Docker 容器状态 ----------
+ * 面板上的 Docker 卡片（cardType=2）需要显示实时状态。
+ *
+ * 做法：从当前可见卡片里派生出「需要监控的容器 ID 集合」，
+ * 交给 useDockerStates 集中轮询一次，再把查询函数 provide 给卡片组件。
+ * 这样请求数恒为 1（与卡片数无关），且卡片增删会自动跟随 ——
+ * 比手动登记/注销更难出错。
+ */
+const docker = useDockerStates()
+
+const watchedContainerIds = computed(() => {
+  const ids: string[] = []
+  for (const group of filterItems.value) {
+    for (const item of group.items || []) {
+      if (item.cardType === 2) {
+        const id = parseContainerId(item.expandParam)
+        if (id) ids.push(id)
+      }
+    }
+  }
+  return ids
+})
+
+watch(watchedContainerIds, (ids) => {
+  setWatchedContainers(ids)
+}, { immediate: true, deep: false })
+
+// 提供给 AppIcon：卡片用它查询自身容器的状态，避免每张卡片各自轮询
+provide('dockerStateOf', docker.stateOf)
 
 
 const drawerVisible = ref(false)
