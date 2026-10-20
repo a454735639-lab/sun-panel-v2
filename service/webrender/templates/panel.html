@@ -1,7 +1,9 @@
 {{ template "head" . }}
 
 {{ with .Panel }}
-<div class="bg-layer" {{ if .BackgroundImageSrc }}style="background-image:url('{{ bgSrc .BackgroundImageSrc }}');filter:blur({{ .BackgroundBlur }}px)"{{ end }}></div>
+{{/* filter:blur(0px) 会让 WebKit 跳过背景图绘制（大图 cover 时尤其明显），
+     因此仅在真正需要模糊时才输出 filter */}}
+<div class="bg-layer" {{ if .BackgroundImageSrc }}style="background-image:url('{{ bgSrc .BackgroundImageSrc }}'){{ if gt .BackgroundBlur 0 }};filter:blur({{ .BackgroundBlur }}px){{ end }}"{{ end }}></div>
 {{ if gt .BackgroundMaskNumber 0.0 }}
 <div class="bg-mask" style="background:rgba(0,0,0,{{ .BackgroundMaskNumber }})"></div>
 {{ end }}
