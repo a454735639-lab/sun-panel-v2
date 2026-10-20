@@ -1,0 +1,32 @@
+{{ define "tab_gallery" }}
+<h3 class="tab-title">图库</h3>
+<p class="tab-desc">已上传的图片文件。共 {{ len .Files }} 个。</p>
+
+<div class="tab-block">
+  <h4>上传</h4>
+  <form hx-post="/hx/gallery/upload" hx-encoding="multipart/form-data" hx-swap="none">
+    <input type="file" name="files" accept="image/*" multiple required>
+    <button type="submit" class="btn btn--primary">上传</button>
+    <span class="hint">支持多选，单个不超过 10MB</span>
+  </form>
+</div>
+
+<div class="gallery-grid">
+  {{ range .Files }}
+    <div class="gallery-item">
+      <a href="{{ .Src }}" target="_blank" rel="noopener" class="gallery-thumb">
+        <img src="{{ .Src }}" alt="{{ .FileName }}" loading="lazy">
+      </a>
+      <div class="gallery-meta">
+        <span class="gallery-name" title="{{ .FileName }}">{{ .FileName }}</span>
+        <button type="button" class="card-btn card-btn--danger" title="删除"
+                hx-post="/hx/gallery/{{ .ID }}/delete"
+                hx-confirm="确定删除 {{ .FileName }}？文件会从磁盘移除。"
+                hx-swap="none">✕</button>
+      </div>
+    </div>
+  {{ else }}
+    <p class="hint">还没有上传任何文件</p>
+  {{ end }}
+</div>
+{{ end }}

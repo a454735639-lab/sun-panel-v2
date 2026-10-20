@@ -1,0 +1,125 @@
+{{ template "head" . }}
+
+{{ with .Panel }}
+<div class="bg-layer" {{ if .BackgroundImageSrc }}style="background-image:url('{{ bgSrc .BackgroundImageSrc }}');filter:blur({{ .BackgroundBlur }}px)"{{ end }}></div>
+{{ if gt .BackgroundMaskNumber 0.0 }}
+<div class="bg-mask" style="background:rgba(0,0,0,{{ .BackgroundMaskNumber }})"></div>
+{{ end }}
+{{ end }}
+
+<div class="shell" style="max-width:{{ default 1200 .Panel.MaxWidth }}px"
+     data-netmode="{{ .NetMode }}"
+     data-auto="{{ if .Panel.NetModeChangeAuto }}1{{ else }}0{{ end }}"
+     data-ping-ms="{{ default 700 .Panel.NetModeChangeAutoMaxPingMs }}">
+
+  {{/* 顶部时钟 */}}
+  {{ if .Panel.ClockShow }}
+  <div class="hero-clock">
+    <div class="clock-time" id="clock">--:--</div>
+    <div class="clock-date" id="clockDate"></div>
+  </div>
+  {{ end }}
+
+  {{/* 搜索框 */}}
+  {{ if .Panel.SearchBoxShow }}
+  <form class="hero-search" action="/search" method="get" role="search"
+        style="background:{{ default "#2a2a2a6b" .Panel.SearchBoxBackground }};border-color:{{ default "#cccccc" .Panel.SearchBoxBorderColor }}">
+    {{ if .Panel.SearchBoxSearchIcon }}<span class="hero-search-icon">⌕</span>{{ end }}
+    <input type="search" name="q" placeholder="请输入搜索内容" autocomplete="off"
+           style="color:{{ default "#ffffff" .Panel.SearchBoxTextColor }}" enterkeyhint="search">
+  </form>
+  {{ end }}
+
+  {{/* 顶栏（悬浮在右上） */}}
+  <div class="corner-bar">
+    <button type="button" class="theme-btn" onclick="toggleTheme()" title="切换主题">◐</button>
+    <div class="netmode" title="内外网切换">
+      <button type="button" class="netmode-btn{{ if eq .NetMode "auto" }} active{{ end }}" hx-post="/hx/netmode/auto" hx-swap="none">自动</button>
+      <button type="button" class="netmode-btn{{ if eq .NetMode "lan" }} active{{ end }}" hx-post="/hx/netmode/lan" hx-swap="none">内网</button>
+      <button type="button" class="netmode-btn{{ if eq .NetMode "wan" }} active{{ end }}" hx-post="/hx/netmode/wan" hx-swap="none">外网</button>
+    </div>
+    {{ if .LoggedIn }}
+      <div class="user-menu">
+        <button class="user-btn" type="button" title="菜单">▦</button>
+        <div class="user-dropdown">
+          {{ if .LoggedIn }}
+            <button type="button" onclick="toggleSort()">卡片排序</button>
+            <button type="button" onclick="toggleGroupSort()">分组排序</button>
+            <div class="dropdown-sep"></div>
+          {{ end }}
+          <a href="/bookmarks">书签</a>
+          <a href="/notepad">便签</a>
+          <a href="/settings">系统应用</a>
+          <a href="/">首页</a>
+          <form action="/logout" method="post"><button type="submit">退出登录</button></form>
+        </div>
+      </div>
+    {{ else }}
+      <a class="login-link" href="/login">登录</a>
+    {{ end }}
+  </div>
+
+  {{/* 分组 */}}
+  <main class="panel">
+    {{ if .DockerAvailable }}
+      <div class="docker-banner" id="docker-banner" style="display:none">
+        <span class="docker-banner-dot"></span>
+        <span id="docker-summary"></span>
+      </div>
+    {{ end }}
+
+    {{ range .Groups }}
+      <section class="group" id="group-{{ .ID }}">
+        <h2 class="group-title" style="color:{{ default "#ffffff" .CardStyle.TextColor }}">
+          {{ if .Icon }}<span class="svg-online group-icon" data-icon="{{ .Icon }}"></span>{{ end }}
+          <span>{{ .Title }}</span>
+          <span class="group-count">{{ len .Items }}</span>
+          <span class="group-actions">
+            <button type="button" class="card-btn" title="编辑分组"
+                    hx-get="/hx/group/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML">✎</button>
+            <button type="button" class="card-btn card-btn--danger" title="删除分组"
+                    hx-post="/hx/group/{{ .ID }}/delete"
+                    hx-confirm="确定删除分组「{{ .Title }}」？分组内有卡片时会被拒绝。"
+                    hx-swap="none">✕</button>
+          </span>
+        </h2>
+
+        {{ template "group_cards_inner" . }}
+      </section>
+    {{ else }}
+      <div class="empty-state">
+        <p>还没有任何分组</p>
+        {{ if .LoggedIn }}
+          <button type="button" class="btn btn--primary"
+                  hx-get="/hx/group/new" hx-target="#modal-host" hx-swap="innerHTML">新建分组</button>
+        {{ end }}
+      </div>
+    {{ end }}
+  </main>
+
+  {{/* 页脚 */}}
+  {{ if .Panel.FooterHtml }}
+    <footer class="page-footer">{{ .Panel.FooterHtml }}</footer>
+  {{ end }}
+</div>
+
+{{ if .LoggedIn }}
+<div class="fab-bar">
+  <button class="fab" type="button"
+          hx-get="/hx/group/new" hx-target="#modal-host" hx-swap="innerHTML">+ 分组</button>
+</div>
+{{ end }}
+
+<div id="ctx-menu" class="ctx-menu" hidden>
+  <button type="button" data-act="open">打开</button>
+  <button type="button" data-act="open-lan">打开内网地址</button>
+  <button type="button" data-act="open-wan">打开外网地址</button>
+  <button type="button" data-act="copy">复制链接</button>
+  <div class="ctx-sep" data-act="sep"></div>
+  <button type="button" data-act="edit">编辑</button>
+  <button type="button" data-act="delete" class="ctx-danger">删除</button>
+</div>
+
+<div id="modal-host"></div>
+
+{{ template "foot" . }}

@@ -1,0 +1,136 @@
+{{/* 单张卡片。数据：.（CardVM） .Group（GroupVM） */}}
+{{ define "card" }}
+  {{ $style := .Group.CardStyle.Style }}
+  {{ if eq $style 2 }}
+    {{/* ---------- 大卡：宽横卡，带状态指标 ---------- */}}
+    <a class="card card--large{{ if eq .CardType 2 }} card--docker{{ end }}"
+       href="{{ .OpenUrl }}"
+       {{ if eq .OpenMethod 2 }}target="_blank" rel="noopener"{{ end }}
+       id="card-{{ .ID }}"
+       data-card-id="{{ .ID }}"
+       data-card-type="{{ .CardType }}"
+       {{ if .WanUrl }}data-url="{{ .WanUrl }}"{{ end }}
+       {{ if .LanUrl }}data-lan-url="{{ .LanUrl }}"{{ end }}
+       {{ if .DockerContainerID }}data-container-id="{{ .DockerContainerID }}"{{ end }}
+       {{ if .WidgetType }}data-widget="{{ .WidgetType }}"{{ end }}
+       title="{{ .Description }}">
+      <span class="card-ico-wrap">
+        {{ template "icon" (dict "Icon" .Icon "Size" 52 "Initial" .Initial) }}
+        {{ if eq .CardType 2 }}{{ template "dockerdot" .ContainerState }}{{ end }}
+      </span>
+      <span class="card-body">
+        <span class="card-title">{{ .Title }}</span>
+        {{ if .Description }}<span class="card-desc">{{ .Description }}</span>{{ end }}
+        {{ if and (eq .CardType 2) .ContainerState }}
+          <span class="card-metrics">CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .ContainerState.MemUsage }}</span>
+        {{ end }}
+        {{ if .WidgetType }}<span class="card-widget" data-widget-for="{{ .ID }}">…</span>{{ end }}
+      </span>
+      <span class="card-actions">
+        <button type="button" class="card-btn" title="编辑"
+                hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
+                onclick="event.preventDefault();event.stopPropagation()">✎</button>
+        <button type="button" class="card-btn card-btn--danger" title="删除"
+                hx-post="/hx/card/{{ .ID }}/delete" hx-confirm="确定删除「{{ .Title }}」？"
+                hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
+                onclick="event.preventDefault();event.stopPropagation()">✕</button>
+      </span>
+    </a>
+  {{ else if eq $style 0 }}
+    {{/* ---------- 详情模式：横向卡片 ---------- */}}
+    <a class="card card--detail{{ if eq .CardType 2 }} card--docker{{ end }}"
+       href="{{ .OpenUrl }}"
+       {{ if eq .OpenMethod 2 }}target="_blank" rel="noopener"{{ end }}
+       id="card-{{ .ID }}"
+       data-card-id="{{ .ID }}"
+       data-card-type="{{ .CardType }}"
+       {{ if .WanUrl }}data-url="{{ .WanUrl }}"{{ end }}
+       {{ if .LanUrl }}data-lan-url="{{ .LanUrl }}"{{ end }}
+       {{ if .DockerContainerID }}data-container-id="{{ .DockerContainerID }}"{{ end }}
+       {{ if .WidgetType }}data-widget="{{ .WidgetType }}"{{ end }}
+       title="{{ .Description }}">
+      <span class="card-ico-wrap">
+        {{ template "icon" (dict "Icon" .Icon "Size" 46 "Initial" .Initial) }}
+      </span>
+      <span class="card-body">
+        <span class="card-title">{{ .Title }}</span>
+        {{ if not .Group.CardStyle.TextInfoHideDescription }}
+          {{ if .Description }}<span class="card-desc">{{ .Description }}</span>{{ end }}
+        {{ end }}
+        {{ if and (eq .CardType 2) .ContainerState }}
+          <span class="card-metrics">
+CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .ContainerState.MemUsage }}
+          </span>
+        {{ end }}
+        {{ if .WidgetType }}<span class="card-widget" data-widget-for="{{ .ID }}">…</span>{{ end }}
+      </span>
+      {{ if eq .CardType 2 }}
+        {{ template "dockerdot" .ContainerState }}
+      {{ end }}
+      <span class="card-actions">
+        <button type="button" class="card-btn" title="编辑"
+                hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
+                onclick="event.preventDefault();event.stopPropagation()">✎</button>
+        <button type="button" class="card-btn card-btn--danger" title="删除"
+                hx-post="/hx/card/{{ .ID }}/delete" hx-confirm="确定删除「{{ .Title }}」？"
+                hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
+                onclick="event.preventDefault();event.stopPropagation()">✕</button>
+      </span>
+    </a>
+  {{ else }}
+    {{/* ---------- 图标模式：方形图标 + 下方标题 ---------- */}}
+    <a class="card card--icon{{ if eq .CardType 2 }} card--docker{{ end }}"
+       href="{{ .OpenUrl }}"
+       {{ if eq .OpenMethod 2 }}target="_blank" rel="noopener"{{ end }}
+       id="card-{{ .ID }}"
+       data-card-id="{{ .ID }}"
+       data-card-type="{{ .CardType }}"
+       {{ if .WanUrl }}data-url="{{ .WanUrl }}"{{ end }}
+       {{ if .LanUrl }}data-lan-url="{{ .LanUrl }}"{{ end }}
+       {{ if .DockerContainerID }}data-container-id="{{ .DockerContainerID }}"{{ end }}
+       {{ if .WidgetType }}data-widget="{{ .WidgetType }}"{{ end }}
+       title="{{ .Description }}">
+      <span class="card-ico-wrap">
+        {{ template "icon" (dict "Icon" .Icon "Size" 76 "Initial" .Initial) }}
+        {{ if eq .CardType 2 }}
+          {{ template "dockerdot" .ContainerState }}
+        {{ end }}
+      </span>
+      {{ if not .Group.CardStyle.TextIconHideTitle }}
+        <span class="card-title">{{ .Title }}</span>
+      {{ end }}
+      {{ if .WidgetType }}<span class="card-widget" data-widget-for="{{ .ID }}">…</span>{{ end }}
+      <span class="card-actions">
+        <button type="button" class="card-btn" title="编辑"
+                hx-get="/hx/card/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML"
+                onclick="event.preventDefault();event.stopPropagation()">✎</button>
+        <button type="button" class="card-btn card-btn--danger" title="删除"
+                hx-post="/hx/card/{{ .ID }}/delete" hx-confirm="确定删除「{{ .Title }}」？"
+                hx-target="#card-{{ .ID }}" hx-swap="outerHTML"
+                onclick="event.preventDefault();event.stopPropagation()">✕</button>
+      </span>
+    </a>
+  {{ end }}
+{{ end }}
+
+{{/* 分组内的卡片网格。数据：.Group（GroupVM）.GroupID */}}
+{{ define "group_cards_inner" }}
+  {{ $style := .CardStyle.Style }}
+  {{ $group := . }}
+<div class="grid grid--{{ if eq $style 0 }}detail{{ else if eq $style 2 }}large{{ else }}icon{{ end }}" id="group-cards-{{ .ID }}">
+  {{ range .Items }}
+    {{ template "card" (dict "Group" $group "ID" .ID "Title" .Title "Description" .Description "OpenUrl" .OpenUrl "WanUrl" .WanUrl "LanUrl" .LanUrl "OpenMethod" .OpenMethod "CardType" .CardType "Icon" .Icon "Initial" .Initial "WidgetType" .WidgetType "DockerContainerID" .DockerContainerID "ContainerState" .ContainerState) }}
+  {{ end }}
+  <button type="button" class="card card--add{{ if eq $style 0 }} card--add-detail{{ end }}{{ if eq $style 2 }} card--add-large{{ end }} not-drag"
+          hx-get="/hx/card/new?groupId={{ .ID }}"
+          hx-target="#modal-host" hx-swap="innerHTML">
+    <span class="card-ico-wrap">
+      <span class="ico ico--empty" style="width:{{ if eq $style 0 }}46{{ else if eq $style 2 }}52{{ else }}76{{ end }}px;height:{{ if eq $style 0 }}46{{ else if eq $style 2 }}52{{ else }}76{{ end }}px;display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text-dim)">+</span>
+    </span>
+    <span class="card-title" style="color:var(--text-dim)">添加</span>
+  </button>
+</div>
+{{ end }}
+
+{{/* 顶层 wrapper：htmx 局部刷新时按文件名渲染 */}}
+{{ template "group_cards_inner" . }}

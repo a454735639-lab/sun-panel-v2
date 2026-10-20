@@ -1,0 +1,66 @@
+{{/* 分组编辑弹窗。数据：.Group .IsNew .CardStyle */}}
+<div class="modal-backdrop" onclick="if(event.target===this).remove()">
+  <div class="modal">
+    <form class="modal-body" hx-post="/hx/group/save" hx-swap="none">
+      <h3 class="modal-title">{{ if .IsNew }}新建分组{{ else }}编辑分组{{ end }}</h3>
+
+      <input type="hidden" name="id" value="{{ .Group.ID }}">
+
+      <label class="field">
+        <span class="field-label">分组名称 *</span>
+        <input type="text" name="title" required autofocus value="{{ .Group.Title }}" placeholder="例如 Nas应用">
+      </label>
+
+      <label class="field">
+        <span class="field-label">分组图标（iconify 名称）</span>
+        <input type="text" name="icon" value="{{ .Group.Icon }}" placeholder="例如 material-symbols:ad-group-outline">
+      </label>
+
+      <fieldset class="field-group">
+        <legend class="field-label">卡片尺寸</legend>
+        <div class="size-picker">
+          <label class="size-opt{{ if eq .CardStyle.Style 1 }} active{{ end }}">
+            <input type="radio" name="cardStyle" value="1" {{ if eq .CardStyle.Style 1 }}checked{{ end }} onchange="previewSize(this)">
+            <span class="size-demo size-demo--small"><i></i><b></b></span>
+            <span class="size-name">小</span>
+            <span class="size-hint">方形图标 + 标题</span>
+          </label>
+          <label class="size-opt{{ if eq .CardStyle.Style 0 }} active{{ end }}">
+            <input type="radio" name="cardStyle" value="0" {{ if eq .CardStyle.Style 0 }}checked{{ end }} onchange="previewSize(this)">
+            <span class="size-demo size-demo--medium"><i></i><b></b><b></b></span>
+            <span class="size-name">中</span>
+            <span class="size-hint">图标 + 标题 + 描述</span>
+          </label>
+          <label class="size-opt{{ if eq .CardStyle.Style 2 }} active{{ end }}">
+            <input type="radio" name="cardStyle" value="2" {{ if eq .CardStyle.Style 2 }}checked{{ end }} onchange="previewSize(this)">
+            <span class="size-demo size-demo--large"><i></i><b></b><b></b><b></b></span>
+            <span class="size-name">大</span>
+            <span class="size-hint">宽卡 + 状态指标</span>
+          </label>
+        </div>
+        <div class="hint" style="margin-top:8px">
+          「大」适合带服务状态小组件的卡片（下载器、媒体库）。
+        </div>
+      </fieldset>
+
+      <div class="modal-actions">
+        {{ if not .IsNew }}
+          <button type="button" class="btn btn--danger"
+                  hx-post="/hx/group/{{ .Group.ID }}/delete"
+                  hx-confirm="确定删除分组「{{ .Group.Title }}」？分组内有卡片时会被拒绝。"
+                  hx-swap="none">删除</button>
+        {{ end }}
+        <span class="spacer"></span>
+        <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>
+        <button type="submit" class="btn btn--primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function previewSize(el) {
+  document.querySelectorAll('.size-opt').forEach(function (o) { o.classList.remove('active') })
+  if (el && el.closest) el.closest('.size-opt').classList.add('active')
+}
+</script>

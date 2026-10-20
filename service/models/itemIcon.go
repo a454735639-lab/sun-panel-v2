@@ -18,6 +18,14 @@ type ItemIcon struct {
 	Sort            int                       `gorm:"type:int(11)" json:"sort"`
 	ItemIconGroupId int                       `json:"itemIconGroupId"`
 	LanOnly         int                       `gorm:"type:tinyint(1);default:0" json:"lanOnly"` // 仅内网展示 0:关闭 1:开启
+	// 官方 v1.4+ 字段
+	CardType        int    `gorm:"type:tinyint(1);default:0" json:"cardType"` // 0 普通 / 2 Docker
+	OnlyName        int    `gorm:"type:tinyint(1);default:0" json:"onlyName"`
+	BackgroundColor string `gorm:"type:varchar(50)" json:"backgroundColor"`
+	ExpandParam     string `gorm:"type:varchar(1000)" json:"expandParam"`
+	// WidgetType 服务状态小组件类型
+	WidgetType   string `gorm:"type:varchar(32);default:''" json:"widgetType"`
+	WidgetConfig string `gorm:"type:varchar(1000)" json:"widgetConfig"`
 	UserId          uint                      `json:"userId"`
 	User            User                      `json:"user"`
 }

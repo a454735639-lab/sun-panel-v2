@@ -1,0 +1,100 @@
+{{ define "tab_users" }}
+<h3 class="tab-title">账号管理</h3>
+<p class="tab-desc">共 {{ len .Users }} 个账号。管理员可管理全部账号。</p>
+
+<div class="tab-block">
+  <h4>现有账号</h4>
+  <table class="docker-table">
+    <thead>
+      <tr><th>用户名</th><th>昵称</th><th>角色</th><th>状态</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {{ range .Users }}
+        <tr>
+          <td class="cell-name">{{ .Username }}{{ if eq .ID $.User.ID }} <span class="hint">(当前)</span>{{ end }}</td>
+          <td>{{ .Name }}</td>
+          <td>{{ if eq .Role 1 }}管理员{{ else }}普通用户{{ end }}</td>
+          <td>{{ if eq .Status 1 }}启用{{ else }}停用{{ end }}</td>
+          <td class="cell-actions">
+            <button type="button" class="btn btn--sm"
+                    onclick="toggleUserEditor({{ .ID }})">编辑</button>
+            {{ if ne .ID $.User.ID }}
+              <button type="button" class="btn btn--sm btn--danger"
+                      hx-post="/hx/users/{{ .ID }}/delete"
+                      hx-confirm="确定删除账号 {{ .Username }}？其分组和卡片会一并删除。"
+                      hx-swap="none">删除</button>
+            {{ end }}
+          </td>
+        </tr>
+        <tr id="user-editor-{{ .ID }}" style="display:none">
+          <td colspan="5">
+            <form hx-post="/hx/users/update" hx-swap="none" class="inline-form">
+              <input type="hidden" name="id" value="{{ .ID }}">
+              <label class="field" style="margin:0">
+                <span class="field-label">昵称</span>
+                <input type="text" name="name" value="{{ .Name }}">
+              </label>
+              <label class="field" style="margin:0">
+                <span class="field-label">邮箱</span>
+                <input type="email" name="mail" value="{{ .Mail }}">
+              </label>
+              <label class="field" style="margin:0">
+                <span class="field-label">角色</span>
+                <select name="role">
+                  <option value="1" {{ if eq .Role 1 }}selected{{ end }}>管理员</option>
+                  <option value="2" {{ if eq .Role 2 }}selected{{ end }}>普通用户</option>
+                </select>
+              </label>
+              <label class="field" style="margin:0">
+                <span class="field-label">状态</span>
+                <select name="status">
+                  <option value="1" {{ if eq .Status 1 }}selected{{ end }}>启用</option>
+                  <option value="2" {{ if eq .Status 2 }}selected{{ end }}>停用</option>
+                </select>
+              </label>
+              <label class="field" style="margin:0">
+                <span class="field-label">重置密码（留空不改）</span>
+                <input type="password" name="password" autocomplete="new-password" placeholder="至少 6 位">
+              </label>
+              <button type="submit" class="btn btn--primary btn--sm">保存</button>
+            </form>
+          </td>
+        </tr>
+      {{ end }}
+    </tbody>
+  </table>
+</div>
+
+<div class="tab-block">
+  <h4>新建账号</h4>
+  <form hx-post="/hx/users/create" hx-swap="none" class="inline-form">
+    <label class="field" style="margin:0">
+      <span class="field-label">用户名 *</span>
+      <input type="text" name="username" required autocomplete="off">
+    </label>
+    <label class="field" style="margin:0">
+      <span class="field-label">密码 *</span>
+      <input type="password" name="password" required minlength="6" autocomplete="new-password">
+    </label>
+    <label class="field" style="margin:0">
+      <span class="field-label">昵称</span>
+      <input type="text" name="name">
+    </label>
+    <label class="field" style="margin:0">
+      <span class="field-label">角色</span>
+      <select name="role">
+        <option value="2">普通用户</option>
+        <option value="1">管理员</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn--primary btn--sm">创建</button>
+  </form>
+</div>
+
+<script>
+function toggleUserEditor(id) {
+  var el = document.getElementById('user-editor-' + id)
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none'
+}
+</script>
+{{ end }}

@@ -1,0 +1,5 @@
+{{ define "import_ok" }}
+<p class="msg-ok">导入成功：{{ .Groups }} 个分组 / {{ .Cards }} 张卡片</p>
+<p class="hint"><a href="/">返回面板查看</a></p>
+{{ end }}
+{{ template "import_ok" . }}

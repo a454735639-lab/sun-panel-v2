@@ -1,0 +1,26 @@
+{{ define "tab_export" }}
+<h3 class="tab-title">导出导入</h3>
+<p class="tab-desc">把全部分组和卡片导出为 JSON 备份；导入会<strong>覆盖</strong>当前账号的所有分组与卡片。</p>
+
+<div class="tab-block">
+  <h4>导出</h4>
+  <p class="hint">包含分组、卡片、图标配置，不含上传的图片文件。</p>
+  <a class="btn btn--primary" href="/hx/export" download>下载备份 JSON</a>
+</div>
+
+<div class="tab-block">
+  <h4>导入</h4>
+  <p class="hint">选择之前导出的 JSON 文件。导入前建议先导出一份当前数据。</p>
+  <form hx-post="/hx/import" hx-encoding="multipart/form-data" hx-target="#import-result" hx-swap="innerHTML">
+    <input type="file" name="file" accept=".json,application/json" required>
+    <button type="submit" class="btn btn--danger"
+            onclick="return confirm('导入会覆盖当前所有分组和卡片，确定继续？')">导入并覆盖</button>
+  </form>
+  <div id="import-result"></div>
+</div>
+
+<div class="tab-block">
+  <h4>统计</h4>
+  <p class="hint">当前账号：{{ .Stats.Groups }} 个分组 / {{ .Stats.Cards }} 张卡片</p>
+</div>
+{{ end }}

@@ -1,0 +1,61 @@
+{{define "head"}}
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="{{ if eq .Theme "light" }}light{{ else }}dark{{ end }}" data-theme-mode="{{ .Theme }}">
+<script>
+(function () {
+  // 服务端给的初值；auto 模式下按系统偏好纠正，在绘制前执行避免闪白
+  var mode = document.documentElement.getAttribute('data-theme-mode') || 'auto'
+  if (mode === 'auto') {
+    var light = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark')
+  }
+})();
+</script>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>{{ default "Sun-Panel" .Title }}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/app.css?v={{ AssetVersion }}">
+  <script src="/static/htmx.min.js?v={{ AssetVersion }}" defer></script>
+  <script src="/static/sortable.min.js?v={{ AssetVersion }}" defer></script>
+  <script src="/static/app.js?v={{ AssetVersion }}" defer></script>
+</head>
+<body class="{{ default "" .BodyClass }}">
+{{end}}
+
+{{define "foot"}}
+<div id="toast-host" class="toast-host"></div>
+</body>
+</html>
+{{end}}
+
+{{define "dockerdot"}}
+{{/* 用法：{{ template "dockerdot" . }}  需要 .ContainerState */}}
+{{if .}}
+  <span class="docker-dot docker-dot--{{ .State }}"
+        title="{{ .Name }} · {{ .Status }}{{ if .Running }} · CPU {{ printf "%.1f" .CPUPercent }}% · 内存 {{ formatBytes .MemUsage }}{{ end }}"></span>
+{{else}}
+  <span class="docker-dot docker-dot--unknown" title="容器状态未知"></span>
+{{end}}
+{{end}}
+
+{{define "icon"}}
+{{/* 渲染一个图标。需要 .Icon（含 ItemType/Src/Text/BackgroundColor）和 .Size */}}
+{{ $size := default 44 .Size }}
+{{ $bg := default "#2a2a2a6b" .Icon.BackgroundColor }}
+{{ if eq .Icon.ItemType 1 }}
+  <span class="ico ico--text" style="width:{{$size}}px;height:{{$size}}px;background:{{$bg}}">{{ .Icon.Text }}</span>
+{{ else if eq .Icon.ItemType 2 }}
+  <span class="ico ico--img" style="width:{{$size}}px;height:{{$size}}px;background:{{$bg}}">
+    <img src="{{ .Icon.Src }}" alt="" loading="lazy">
+  </span>
+{{ else if eq .Icon.ItemType 3 }}
+  <span class="ico ico--svg" style="width:{{$size}}px;height:{{$size}}px;background:{{$bg}}">
+    <span class="svg-online" data-icon="{{ .Icon.Text }}" style="font-size:{{$size}}px"></span>
+  </span>
+{{ else }}
+  <span class="ico ico--empty" data-initial="{{ if .Initial }}{{ .Initial }}{{ else }}?{{ end }}" style="width:{{$size}}px;height:{{$size}}px"></span>
+{{ end }}
+{{end}}

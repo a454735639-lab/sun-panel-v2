@@ -1,0 +1,68 @@
+{{ define "bookmark_form" }}
+<div class="modal-backdrop" onclick="if(event.target===this)this.remove()">
+  <div class="modal">
+    <form class="modal-body" hx-post="/hx/bookmark/save" hx-swap="none">
+      <h3 class="modal-title">{{ if .IsFolder }}文件夹{{ else }}书签{{ end }}</h3>
+      <input type="hidden" name="id" value="{{ .Bookmark.ID }}">
+      <input type="hidden" name="isFolder" value="{{ .IsFolderInt }}">
+      <input type="hidden" name="parentId" value="{{ .ParentId }}">
+
+      <label class="field">
+        <span class="field-label">名称 *</span>
+        <input type="text" name="title" required autofocus value="{{ .Bookmark.Title }}">
+      </label>
+
+      {{ if not .IsFolder }}
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">外网地址</span>
+            <input type="text" name="url" value="{{ .Bookmark.Url }}" placeholder="https://...">
+          </label>
+          <label class="field">
+            <span class="field-label">内网地址</span>
+            <input type="text" name="lanUrl" value="{{ .Bookmark.LanUrl }}" placeholder="http://192.168.x.x">
+          </label>
+        </div>
+        <label class="field">
+          <span class="field-label">图标 URL（留空用首字）</span>
+          <input type="text" name="iconSrc" value="{{ .IconSrc }}" placeholder="https://... 或留空">
+        </label>
+      {{ end }}
+
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>
+        <button type="submit" class="btn btn--primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{ end }}
+
+{{ define "note_form" }}
+<div class="modal-backdrop" onclick="if(event.target===this)this.remove()">
+  <div class="modal">
+    <form class="modal-body" hx-post="/hx/notepad/save" hx-swap="none">
+      <h3 class="modal-title">便签</h3>
+      <input type="hidden" name="id" value="{{ .Note.ID }}">
+
+      <label class="field">
+        <span class="field-label">标题</span>
+        <input type="text" name="title" value="{{ .Note.Title }}" autofocus placeholder="未命名便签">
+      </label>
+
+      <label class="field">
+        <span class="field-label">内容</span>
+        <textarea name="content" rows="10" placeholder="写点什么…">{{ .Note.Content }}</textarea>
+      </label>
+
+      <div class="modal-actions">
+        <span class="spacer"></span>
+        <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>
+        <button type="submit" class="btn btn--primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{ end }}
+{{ template "bookmark_form" . }}

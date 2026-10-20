@@ -1,0 +1,58 @@
+{{ define "icon_picker" }}
+<div class="modal-backdrop" onclick="if(event.target===this)this.remove()">
+  <div class="modal modal--wide">
+    <div class="modal-body">
+      <h3 class="modal-title">选择图标</h3>
+
+      <div class="picker-tabs">
+        <button type="button" class="picker-tab active" data-tab="lib" onclick="switchPickerTab('lib')">图标库</button>
+        <button type="button" class="picker-tab" data-tab="mine" onclick="switchPickerTab('mine')">我的图库</button>
+        <button type="button" class="picker-tab" data-tab="url" onclick="switchPickerTab('url')">手动输入</button>
+      </div>
+
+      <!-- 图标库 -->
+      <div class="picker-pane" id="picker-lib">
+        <div class="icon-picker">
+          <input type="text" id="iconify-search" placeholder="搜索图标，如 home / docker / music"
+                 oninput="debouncedIconSearch(this.value)" autocomplete="off">
+          <button type="button" class="btn btn--sm" onclick="iconSearch(document.getElementById('iconify-search').value)">搜索</button>
+        </div>
+        <div class="picker-hint" id="picker-status">输入关键词搜索 iconify 图标库（24 万个图标）</div>
+        <div class="icon-grid" id="icon-results"></div>
+      </div>
+
+      <!-- 我的图库 -->
+      <div class="picker-pane" id="picker-mine" style="display:none">
+        {{ if .Files }}
+          <div class="icon-grid">
+            {{ range .Files }}
+              <button type="button" class="icon-cell" onclick="pickIcon('{{ .Src }}')" title="{{ .FileName }}">
+                <img src="{{ .Src }}" alt="" loading="lazy">
+              </button>
+            {{ end }}
+          </div>
+        {{ else }}
+          <p class="picker-hint">还没有上传过图片，去「系统应用 → 图库」上传。</p>
+        {{ end }}
+      </div>
+
+      <!-- 手动输入 -->
+      <div class="picker-pane" id="picker-url" style="display:none">
+        <label class="field">
+          <span class="field-label">图片地址</span>
+          <input type="text" id="picker-url-input" value="{{ .Current }}" placeholder="https://... 或 /uploads/...">
+        </label>
+        <button type="button" class="btn btn--primary btn--sm"
+                onclick="pickIcon(document.getElementById('picker-url-input').value)">使用这个地址</button>
+      </div>
+
+      <div class="modal-actions">
+        <span class="picker-hint" id="picker-current">当前：{{ .Current }}</span>
+        <span class="spacer"></span>
+        <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}
+{{ template "icon_picker" . }}

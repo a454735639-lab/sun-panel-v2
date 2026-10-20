@@ -1,0 +1,11 @@
+{{ template "head" . }}
+
+<main class="panel">
+  <div class="empty-state">
+    <h1 style="font-size:20px;margin-bottom:8px">{{ default "出错了" .Title }}</h1>
+    <p style="color:var(--text-dim)">{{ .Error }}</p>
+    <p style="margin-top:18px"><a class="btn" href="/">返回首页</a></p>
+  </div>
+</main>
+
+{{ template "foot" . }}

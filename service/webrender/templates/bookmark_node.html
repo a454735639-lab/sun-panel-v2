@@ -1,0 +1,46 @@
+{{ define "bmnode" }}
+  {{ if .IsFolder }}
+    <details class="bm-folder" {{ if .Children }}open{{ end }}>
+      <summary class="bm-folder-head">
+        <span class="bm-folder-icon">📁</span>
+        <span class="bm-folder-title">{{ .Title }}</span>
+        <span class="bm-folder-count">{{ len .Children }}</span>
+        <span class="bm-actions">
+          <button type="button" class="card-btn" title="在文件夹内新建"
+                  onclick="event.preventDefault();event.stopPropagation();openBookmarkForm({{ .ID }},0)">+</button>
+          <button type="button" class="card-btn" title="编辑"
+                  onclick="event.preventDefault();event.stopPropagation();openBookmarkForm({{ .ID }},1)">✎</button>
+          <button type="button" class="card-btn card-btn--danger" title="删除"
+                  hx-post="/hx/bookmark/{{ .ID }}/delete"
+                  hx-confirm="确定删除文件夹「{{ .Title }}」？里面的书签会一并删除。"
+                  hx-swap="none"
+                  onclick="event.preventDefault();event.stopPropagation()">✕</button>
+        </span>
+      </summary>
+      <div class="bm-children">
+        {{ range .Children }}{{ template "bmnode" . }}{{ end }}
+        {{ if not .Children }}<p class="hint" style="padding-left:28px">空文件夹</p>{{ end }}
+      </div>
+    </details>
+  {{ else }}
+    <div class="bm-item">
+      <a class="bm-link" href="{{ .OpenUrl }}" target="_blank" rel="noopener">
+        {{ if .Icon.Src }}
+          <img class="bm-icon" src="{{ .Icon.Src }}" alt="">
+        {{ else }}
+          <span class="bm-icon bm-icon--text">{{ .Icon.Text }}</span>
+        {{ end }}
+        <span class="bm-title">{{ .Title }}</span>
+        <span class="bm-url">{{ .OpenUrl }}</span>
+      </a>
+      <span class="bm-actions">
+        <button type="button" class="card-btn" title="编辑"
+                onclick="openBookmarkForm({{ .ID }},0)">✎</button>
+        <button type="button" class="card-btn card-btn--danger" title="删除"
+                hx-post="/hx/bookmark/{{ .ID }}/delete"
+                hx-confirm="确定删除「{{ .Title }}」？"
+                hx-swap="none">✕</button>
+      </span>
+    </div>
+  {{ end }}
+{{ end }}

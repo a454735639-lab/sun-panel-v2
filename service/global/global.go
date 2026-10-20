@@ -3,6 +3,7 @@ package global
 import (
 	"sun-panel/initialize/database"
 	"sun-panel/lib/cache"
+	"sun-panel/lib/dockerApi"
 	"sun-panel/lib/cmn/systemSetting"
 	"sun-panel/lib/iniConfig"
 	"sun-panel/lib/language"
@@ -39,6 +40,9 @@ var (
 	SystemSetting       *systemSetting.SystemSettingCache
 	SystemMonitor       cache.Cacher[interface{}]
 	RateLimit           *RateLimiter
+
+	// DockerClient Docker 管理客户端；未挂载 docker.sock 时为 nil
+	DockerClient *dockerApi.Client
 
 	ServerPublicIP      = ""
 	ServerPublicIPMutex = sync.RWMutex{}

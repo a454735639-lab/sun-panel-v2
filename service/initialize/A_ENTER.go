@@ -60,6 +60,9 @@ func InitApp() error {
 
 	DatabaseConnect()
 
+	// Docker 管理客户端（未挂载 docker.sock 时静默跳过）
+	InitDockerClient()
+
 	// Redis 连接
 	{
 		// 判断是否有使用redis的驱动，没有将不连接
@@ -168,6 +171,7 @@ func CommandRun() {
 		global.Config = config
 
 		DatabaseConnect()
+
 		userInfo := models.User{}
 		if err := global.Db.Where("role=?", 1).Order("id").First(&userInfo).Error; err != nil {
 			fmt.Println("ERROR", err.Error())

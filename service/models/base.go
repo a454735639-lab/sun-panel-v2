@@ -5,8 +5,8 @@ import (
 	"time"
 
 	_ "gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
-	_ "gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
+	_ "github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )

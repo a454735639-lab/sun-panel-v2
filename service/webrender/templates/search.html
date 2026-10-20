@@ -1,0 +1,51 @@
+{{ template "head" . }}
+
+<div class="shell" style="max-width:{{ default 1200 .Panel.MaxWidth }}px">
+  <div class="search-head">
+    <form class="hero-search" action="/search" method="get" role="search"
+          style="background:{{ default "#2a2a2a6b" .Panel.SearchBoxBackground }};border-color:{{ default "#cccccc" .Panel.SearchBoxBorderColor }}">
+      <span class="hero-search-icon">⌕</span>
+      <input type="search" name="q" value="{{ .Query }}" autofocus
+             style="color:{{ default "#ffffff" .Panel.SearchBoxTextColor }}" enterkeyhint="search">
+    </form>
+    <a class="search-back" href="/">← 返回面板</a>
+  </div>
+
+  {{ if .Engines }}
+    <div class="engine-row">
+      <span class="engine-label">用外部引擎搜索「{{ .Query }}」：</span>
+      {{ range .Engines }}
+        <a class="engine-link" href="{{ .Href }}" target="_blank" rel="noopener">
+          {{ if .IconSrc }}<img src="{{ .IconSrc }}" alt="" class="engine-icon">{{ end }}
+          <span>{{ .Title }}</span>
+        </a>
+      {{ end }}
+    </div>
+  {{ end }}
+
+  <h2 class="search-count">
+    面板内找到 <strong>{{ len .Results }}</strong> 个结果
+  </h2>
+
+  {{ if .Results }}
+    <div class="grid grid--detail">
+      {{ range .Results }}
+        <a class="card card--detail" href="{{ .Url }}" {{ if ne .Kind "note" }}target="_blank" rel="noopener"{{ end }}>
+          <span class="card-kind">{{ if eq .Kind "bookmark" }}书签{{ else if eq .Kind "note" }}便签{{ end }}</span>
+          <span class="card-ico-wrap">
+            {{ template "icon" (dict "Icon" .Icon.Icon "Size" 44) }}
+          </span>
+          <span class="card-body">
+            <span class="card-title">{{ .Title }}</span>
+            {{ if .Description }}<span class="card-desc">{{ .Description }}</span>{{ end }}
+            {{ if .GroupTitle }}<span class="card-metrics">{{ .GroupTitle }}{{ if .Description }} · {{ .Description }}{{ end }}</span>{{ end }}
+          </span>
+        </a>
+      {{ end }}
+    </div>
+  {{ else }}
+    <p class="empty">面板里没有匹配「{{ .Query }}」的卡片</p>
+  {{ end }}
+</div>
+
+{{ template "foot" . }}

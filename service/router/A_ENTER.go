@@ -8,6 +8,7 @@ import (
 	"sun-panel/router/openness"
 	"sun-panel/router/panel"
 	"sun-panel/router/system"
+	"sun-panel/webrender"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,6 +16,8 @@ import (
 // 初始化总路由
 func InitRouters(addr string) error {
 	router := gin.Default()
+	router.Use(webrender.Gzip())
+	router.Use(webrender.StaticCache(604800))
 	rootRouter := router.Group("/")
 	routerGroup := rootRouter.Group("api")
 	routerGroup.Use(Cors()) // Apply CORS to all /api routes
@@ -25,19 +28,8 @@ func InitRouters(addr string) error {
 	panel.Init(routerGroup)
 	openness.Init(routerGroup)
 
-	// WEB文件服务
-	{
-		webPath := "./web"
-		router.StaticFile("/", webPath+"/index.html")
-		router.Static("/assets", webPath+"/assets")
-		router.Static("/custom", webPath+"/custom")
-		router.StaticFile("/favicon.ico", webPath+"/favicon.ico")
-		router.StaticFile("/favicon.svg", webPath+"/favicon.svg")
-	}
-
-	// 上传的文件
-	sourcePath := global.Config.GetValueString("base", "source_path")
-	router.Static(sourcePath[1:], sourcePath)
+	// 服务端渲染页面 + htmx 端点 + 静态资源
+	InitSSR(router)
 
 	global.Logger.Info("Sun-Panel is Started.  Listening and serving HTTP on ", addr)
 	return router.Run(addr)

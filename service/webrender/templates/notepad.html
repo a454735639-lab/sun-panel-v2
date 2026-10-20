@@ -1,0 +1,39 @@
+{{ template "head" . }}
+
+<div class="shell" style="max-width:{{ default 1200 .Panel.MaxWidth }}px">
+  <div class="page-head">
+    <h1 class="page-title">便签</h1>
+    <span class="page-count">{{ len .Notes }} 条</span>
+    <span class="page-actions">
+      <button type="button" class="btn btn--sm btn--primary" onclick="openNoteForm(0)">+ 新建便签</button>
+      <a class="btn btn--sm" href="/">返回面板</a>
+    </span>
+  </div>
+
+  {{ if .Notes }}
+    <div class="note-grid">
+      {{ range .Notes }}
+        <div class="note-card">
+          <div class="note-head">
+            <span class="note-title">{{ .Title }}</span>
+            <span class="bm-actions">
+              <button type="button" class="card-btn" title="编辑"
+                      onclick="openNoteForm({{ .ID }})">✎</button>
+              <button type="button" class="card-btn card-btn--danger" title="删除"
+                      hx-post="/hx/notepad/{{ .ID }}/delete"
+                      hx-confirm="确定删除便签「{{ .Title }}」？"
+                      hx-swap="none">✕</button>
+            </span>
+          </div>
+          <div class="note-content">{{ .Content }}</div>
+        </div>
+      {{ end }}
+    </div>
+  {{ else }}
+    <p class="empty">还没有便签。点「+ 新建便签」写一条。</p>
+  {{ end }}
+</div>
+
+<div id="note-form-host"></div>
+
+{{ template "foot" . }}

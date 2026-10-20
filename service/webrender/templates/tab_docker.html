@@ -1,0 +1,55 @@
+{{ define "tab_docker" }}
+<h3 class="tab-title">Docker</h3>
+{{ if not .DockerAvailable }}
+  <p class="msg-error">Docker 不可用：未检测到 docker.sock，请在部署时挂载 <code>/var/run/docker.sock</code></p>
+{{ else }}
+<p class="tab-desc">共 {{ len .Containers }} 个容器。</p>
+
+<div class="tab-actions" style="margin-bottom:12px">
+  <button type="button" class="btn btn--sm" hx-get="/settings/docker" hx-target="#settings-content" hx-select="#settings-content" hx-swap="outerHTML">刷新</button>
+</div>
+
+<table class="docker-table">
+  <thead>
+    <tr>
+      <th>容器名称</th>
+      <th>状态</th>
+      <th>资源概览</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{ range .Containers }}
+      <tr>
+        <td class="cell-name">
+          <span class="docker-dot docker-dot--{{ .State }}" style="position:static;display:inline-block;margin-right:8px"></span>
+          {{ .Name }}
+        </td>
+        <td>{{ .Status }}</td>
+        <td class="cell-metrics">
+          {{ if .Running }}
+            CPU:{{ printf "%.1f" .CPUPercent }}% RAM:{{ formatBytes .MemUsage }}
+          {{ else }}—{{ end }}
+        </td>
+        <td class="cell-actions">
+          {{ if .Running }}
+            <button type="button" class="btn btn--sm"
+                    hx-post="/hx/docker/action" hx-vals='{"containerId":"{{ .ID }}","action":"stop"}'
+                    hx-confirm="确定停止 {{ .Name }}？" hx-swap="none">停止</button>
+            <button type="button" class="btn btn--sm"
+                    hx-post="/hx/docker/action" hx-vals='{"containerId":"{{ .ID }}","action":"restart"}'
+                    hx-confirm="确定重启 {{ .Name }}？" hx-swap="none">重启</button>
+          {{ else }}
+            <button type="button" class="btn btn--sm btn--primary"
+                    hx-post="/hx/docker/action" hx-vals='{"containerId":"{{ .ID }}","action":"start"}'
+                    hx-swap="none">启动</button>
+          {{ end }}
+        </td>
+      </tr>
+    {{ else }}
+      <tr><td colspan="4" class="hint">没有容器</td></tr>
+    {{ end }}
+  </tbody>
+</table>
+{{ end }}
+{{ end }}

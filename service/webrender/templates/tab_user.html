@@ -1,0 +1,42 @@
+{{ define "tab_user" }}
+<h3 class="tab-title">我的信息</h3>
+
+<form hx-post="/hx/user/save" hx-swap="none" class="style-form">
+  <fieldset class="field-group">
+    <legend>账号</legend>
+    <label class="field">
+      <span class="field-label">用户名（不可修改）</span>
+      <input type="text" value="{{ .User.Username }}" disabled>
+    </label>
+    <label class="field">
+      <span class="field-label">昵称</span>
+      <input type="text" name="name" value="{{ .User.Name }}" placeholder="显示名称">
+    </label>
+    <label class="field">
+      <span class="field-label">邮箱</span>
+      <input type="email" name="mail" value="{{ .User.Mail }}" placeholder="选填">
+    </label>
+  </fieldset>
+
+  <div class="tab-actions">
+    <button type="submit" class="btn btn--primary">保存</button>
+  </div>
+</form>
+
+<form hx-post="/hx/user/password" hx-swap="none" class="style-form" style="margin-top:28px">
+  <fieldset class="field-group">
+    <legend>修改密码</legend>
+    <label class="field">
+      <span class="field-label">当前密码</span>
+      <input type="password" name="oldPassword" autocomplete="current-password" required>
+    </label>
+    <label class="field">
+      <span class="field-label">新密码</span>
+      <input type="password" name="newPassword" autocomplete="new-password" minlength="6" required>
+    </label>
+  </fieldset>
+  <div class="tab-actions">
+    <button type="submit" class="btn btn--primary">修改密码</button>
+  </div>
+</form>
+{{ end }}
