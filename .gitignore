@@ -3,3 +3,22 @@
 bin*
 *.log
 sun-panel
+
+# ---- 运行期产物：绝不应提交 ----
+# 这些是容器/本地首次启动时由程序自己生成的，包含用户数据与密码哈希。
+# 此前 .gitignore 未覆盖，`git add .` 会把本地数据库和配置一起提交上去。
+service/conf/conf.ini
+service/database/
+service/database.db
+service/uploads/
+service/runtime/
+
+# 兜底：任何层级的运行期目录
+**/database.db
+**/conf.ini
+**/uploads/
+**/runtime/
+
+# 构建产物
+/release/
+/dist/

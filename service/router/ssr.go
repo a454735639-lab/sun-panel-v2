@@ -88,5 +88,10 @@ func InitSSR(rootRouter *gin.Engine) {
 	{
 		api.POST("/widget/batch", pages.WidgetBatch)
 		api.GET("/widget/types", pages.WidgetTypes)
+
+		// 容器实时状态：app.js 的 pollDocker() 依赖此端点。
+		// 路径与前端现有调用保持一致（/api/docker/container/getContainerStates），
+		// 不改前端即可修复状态灯与 CPU/RAM 显示。
+		api.POST("/docker/container/getContainerStates", pages.DockerStates)
 	}
 }

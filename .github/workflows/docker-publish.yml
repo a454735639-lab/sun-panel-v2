@@ -1,5 +1,15 @@
 name: Build & Publish Docker Image
 
+# 构建并推送多架构镜像到 GHCR。
+# NAS（aarch64）用 docker compose pull 即可，无需在 NAS 上编译。
+#
+# 相比旧版的改动：
+#   1. 移除 Set up QEMU —— Dockerfile 已改为 BUILDPLATFORM 原生交叉编译，
+#      构建阶段不再执行任何目标架构二进制，因此 QEMU 不再需要。
+#      这是 arm64 构建耗时下降的主要原因。
+#   2. 增加 sbom / provenance，便于镜像供应链追溯。
+#   3. 增加构建后自检：确认镜像内不含 web/ 目录，且 embed 静态资源可正常提供。
+
 on:
   push:
     branches:
@@ -10,7 +20,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # IMAGE_NAME becomes: ghcr.io/<owner>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -24,9 +33,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
+      # 不再需要 QEMU：Dockerfile 用 BUILDPLATFORM 原生交叉编译
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -58,3 +65,34 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          sbom: true
+          provenance: true
+
+      # 自检：镜像内不应再有 web/ 目录（Vue 产物在服务端已无引用）
+      - name: Verify image (no legacy web/, embed static works)
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          set -e
+          TAG="$(echo "$TAGS" | head -1)"
+          echo "检查镜像: $TAG"
+          docker pull --platform linux/amd64 "$TAG"
+          echo "--- /app 内容 ---"
+          docker run --rm --entrypoint sh "$TAG" -c 'ls -la /app'
+          if docker run --rm --entrypoint sh "$TAG" -c 'test -d /app/web'; then
+            echo "::error::镜像中仍存在 /app/web，Vue 产物未被移除"
+            exit 1
+          fi
+          echo "自检通过：无 /app/web"
+          docker run -d --name sp-check -p 13002:3002 "$TAG"
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:13002/healthz >/dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:13002/healthz && echo "healthz OK"
+          curl -fsS http://127.0.0.1:13002/static/htmx.min.js >/dev/null && echo "embed static OK"
+          curl -s -o /dev/null -w "docker endpoint: %{http_code}\n" -X POST \
+            -H "Content-Type: application/json" -d '{"containerIds":["x"]}' \
+            http://127.0.0.1:13002/api/docker/container/getContainerStates
+          docker logs sp-check | tail -20 || true
+          docker rm -f sp-check

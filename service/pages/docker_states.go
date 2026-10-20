@@ -1,0 +1,64 @@
+package pages
+
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"sun-panel/global"
+	"sun-panel/lib/dockerApi"
+
+	"github.com/gin-gonic/gin"
+)
+
+// DockerStates 卡片容器的实时状态查询端点。
+//
+// 背景：webrender/static/app.js 的 pollDocker() 一直轮询
+// POST /api/docker/container/getContainerStates，但该路由从未在后端注册过，
+// 导致容器状态灯（绿/黄/红）、CPU/RAM 数字与「N / M 个容器运行中」始终拿不到数据，
+// 且前端 catch 静默，用户无感知。此处理器补齐该端点。
+//
+// 约定：用 POST + JSON，与 /api/widget/batch 保持一致。
+// 返回结构保持 app.js 现有的 res.data.list 约定，避免改动前端解析逻辑。
+func DockerStates(c *gin.Context) {
+	if _, ok := currentUser(c); !ok {
+		c.String(http.StatusUnauthorized, "")
+		return
+	}
+
+	// 未挂载 docker.sock 时视为「无容器」，返回空列表而不是报错：
+	// 面板本身仍应正常可用。
+	if global.DockerClient == nil {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"list": []any{}}})
+		return
+	}
+
+	var req struct {
+		ContainerIds []string `json:"containerIds"`
+		WithStats    bool     `json:"withStats"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 1, "msg": "参数错误"})
+		return
+	}
+	if len(req.ContainerIds) == 0 {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"list": []any{}}})
+		return
+	}
+	// 上限保护：单次请求最多查 60 个容器，避免被构造超长列表拖慢面板。
+	if len(req.ContainerIds) > 60 {
+		req.ContainerIds = req.ContainerIds[:60]
+	}
+
+	// 与 pages/base.go 中既有的调用方式保持一致：8 秒超时。
+	// GetContainerStates 内部已用 8 并发信号量限制，这里只负责整体超时。
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 8*time.Second)
+	defer cancel()
+
+	states := global.DockerClient.GetContainerStates(ctx, req.ContainerIds, req.WithStats)
+	if states == nil {
+		states = []dockerApi.ContainerState{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"list": states}})
+}

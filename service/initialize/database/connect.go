@@ -4,14 +4,15 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 	"sun-panel/lib/cmn"
 	"sun-panel/models"
 	"time"
 
-	"gorm.io/driver/mysql"
-	_ "gorm.io/driver/mysql"
 	"github.com/glebarez/sqlite"
 	_ "github.com/glebarez/sqlite"
+	"gorm.io/driver/mysql"
+	_ "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
@@ -132,19 +133,36 @@ func CreateDatabase(driver string, db *gorm.DB) error {
 }
 
 // 初始化一个用户,一个用户都没有的时候创建一个
+//
+// 账号与密码支持通过环境变量注入，便于容器化部署（不用改代码/进容器改库）：
+//
+//	SUNPANEL_ADMIN_USERNAME  默认 admin
+//	SUNPANEL_ADMIN_PASSWORD  默认 123456
+//
+// 仅在该库中一个用户都没有时会创建；已存在用户时这两个变量不生效，
+// 因此改了环境变量也不会覆盖已有部署的密码。
 func NotFoundAndCreateUser(db *gorm.DB) error {
 	fUser := models.User{}
 	if err := db.First(&fUser).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
 			return err
 		}
-		username := "admin"
+
+		username := strings.TrimSpace(os.Getenv("SUNPANEL_ADMIN_USERNAME"))
+		if username == "" {
+			username = "admin"
+		}
+		password := os.Getenv("SUNPANEL_ADMIN_PASSWORD")
+		if password == "" {
+			password = "123456"
+		}
+
 		fUser.Mail = username
 		fUser.Username = username
 		fUser.Name = username
 		fUser.Status = 1
 		fUser.Role = 1
-		fUser.Password = cmn.PasswordEncryption("123456")
+		fUser.Password = cmn.PasswordEncryption(password)
 
 		if errCreate := db.Create(&fUser).Error; errCreate != nil {
 			return errCreate

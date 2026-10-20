@@ -203,6 +203,39 @@
     }
   }
 
+  /* 统一的 POST 请求出口：失败一定有反馈。
+   * 此前这里用 .catch(function () {}) 把错误静默吞掉——会话过期或后端异常时，
+   * 用户以为顺序已保存，刷新后却发现回退。改为统一走这里，复用页面已有的 showToast。 */
+  function postJSON(url, payload, okMsg) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      if (r.status === 401) {
+        // 会话已失效：提示后回登录页，避免用户在无效会话里反复操作
+        toast('登录已过期，正在跳转…', true)
+        setTimeout(function () { window.location.href = '/login' }, 900)
+        return
+      }
+      if (!r.ok) {
+        toast('保存失败（HTTP ' + r.status + '），请重试', true)
+        return
+      }
+      if (okMsg) toast(okMsg, false)
+    }).catch(function () {
+      toast('保存失败：网络异常，请重试', true)
+    })
+  }
+
+  // toast 包装：showToast 定义在文件后段，这里用 typeof 守卫，避免加载顺序问题
+  function toast(msg, isErr) {
+    if (typeof window.showToast === 'function') {
+      window.showToast(msg, isErr ? 'err' : 'ok')
+    }
+  }
+
   function saveSort(grid) {
     var groupId = parseInt(String(grid.id).replace('group-cards-', ''), 10)
     var ids = []
@@ -210,12 +243,7 @@
       var id = parseInt(el.getAttribute('data-card-id'), 10)
       if (!isNaN(id)) ids.push(id)
     })
-    fetch('/hx/card/sort', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ groupId: groupId, ids: ids })
-    }).catch(function () {})
+    postJSON('/hx/card/sort', { groupId: groupId, ids: ids }, '顺序已保存')
   }
 
 
@@ -255,12 +283,7 @@
             var id = parseInt(String(el.id).replace('group-', ''), 10)
             if (!isNaN(id)) ids.push(id)
           })
-          fetch('/hx/group/sort', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ ids: ids })
-          }).catch(function () {})
+          postJSON('/hx/group/sort', { ids: ids }, '分组顺序已保存')
         }
       })
     } else if (groupSortable) {
