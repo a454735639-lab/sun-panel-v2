@@ -49,6 +49,11 @@ COPY postcss.config.js tailwind.config.js ./
 COPY src/ ./src/
 COPY public/ ./public/
 
+# .env 提供 VITE_GLOB_API_URL=/api 等构建期变量。
+# 缺了它 import.meta.env.VITE_GLOB_API_URL 为 undefined，
+# axios 的 baseURL 变成空，请求会打到 /panel/... 而不是 /api/panel/...，全部 404。
+COPY .env ./
+
 # base=/v2/ 与后端 router/vueweb.go 的 VueBasePath 保持一致：
 # 资源引用会生成为 /v2/assets/...，否则与 SSR 的 /static/* 冲突。
 ENV VITE_PUBLIC_BASE=/v2/
