@@ -606,6 +606,135 @@ body.sorting .card[data-card-id] > * { pointer-events: none; }
 .sortable-ghost { opacity: .35; }
 .sortable-chosen { box-shadow: var(--shadow-hover); }
 
+/* ==========================================================================
+   交互动效层
+   --------------------------------------------------------------------------
+   目标：让每个操作都有明确的视觉反馈，而不是"啪"一下瞬间变化。
+   原则：
+     1. 只动 opacity / transform —— 这两个属性不触发重排，走 GPU 合成。
+        绝不对 height / margin / top 做过渡（那会引发重排，正是卡顿来源）。
+     2. 时长 150–220ms。低于 120ms 感觉不出来，高于 300ms 觉得拖沓。
+     3. 缓动统一用 cubic-bezier(.4,0,.2,1)（Material 标准曲线，起步快收尾稳）。
+     4. 必须尊重 prefers-reduced-motion，见文件末尾。
+   ========================================================================== */
+
+:root {
+  --ease-out: cubic-bezier(.4, 0, .2, 1);
+  --dur-fast: .14s;
+  --dur-base: .18s;
+  --dur-slow: .22s;
+}
+
+/* ---------- 弹窗进出动画 ----------
+   实现说明：htmx 没有 Vue 那样的 enter/leave 类机制，
+   由 app.js 在 afterSwap 时补 .is-open 触发进入、
+   在 beforeSwap 时先移除 .is-open 播反向动画再真正替换。
+   最终态由 .is-open 决定，未加类时即为"已退场"状态。 */
+.modal-backdrop {
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.modal {
+  opacity: 0;
+  transform: translateY(10px) scale(.985);
+  transition: opacity var(--dur-slow) var(--ease-out),
+              transform var(--dur-slow) var(--ease-out);
+}
+.modal-backdrop.is-open { opacity: 1; }
+.modal-backdrop.is-open .modal { opacity: 1; transform: none; }
+
+/* 弹窗正在退场时，禁止再次点击，避免重复触发 */
+.modal-backdrop.is-closing { pointer-events: none; }
+
+/* ---------- htmx 局部刷新：内容淡入 ----------
+   避免替换瞬间的"闪一下"。由 app.js 在 afterSwap 加 .fade-enter。 */
+@keyframes sp-fade-in { from { opacity: 0 } to { opacity: 1 } }
+.fade-enter { animation: sp-fade-in var(--dur-base) var(--ease-out) }
+
+/* ---------- 按钮加载态（同时防重复提交）----------
+   原先点保存后没有任何反馈，用户不知道有没有点上，容易连点。
+   由 app.js 在 beforeRequest / afterRequest 加减 .is-loading。 */
+.btn.is-loading {
+  pointer-events: none;
+  opacity: .72;
+}
+.btn.is-loading::after {
+  content: '';
+  display: inline-block;
+  width: 11px; height: 11px;
+  margin-left: 7px;
+  vertical-align: -1px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: sp-btn-spin .6s linear infinite;
+}
+@keyframes sp-btn-spin { to { transform: rotate(360deg) } }
+
+/* ---------- Toast：滑入 + 淡出 ---------- */
+.toast {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity var(--dur-base) var(--ease-out),
+              transform var(--dur-base) var(--ease-out);
+}
+.toast--in { opacity: 1; transform: none; }
+
+/* ---------- 卡片悬停：轻微上浮 + 阴影扩散 ----------
+   比单纯的阴影变化更有"物理感"。位移控制在 2px，避免布局晃动。 */
+.card--detail,
+.card--icon {
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              background var(--dur-base) var(--ease-out);
+}
+.card--detail:hover,
+.card--icon:hover {
+  transform: translateY(-2px);
+}
+
+/* ---------- 拖拽排序：插入位指示 ----------
+   原先拖动时看不出会落在哪。用 SortableJS 的 ghost 类。 */
+.sortable-ghost {
+  opacity: .3;
+  transform: scale(.98);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.sortable-chosen {
+  transform: scale(1.02);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.sortable-drag {
+  opacity: .9;
+  transform: rotate(1.5deg) scale(1.03);
+}
+
+/* ---------- 表单校验反馈 ---------- */
+@keyframes sp-shake {
+  0%, 100% { transform: none }
+  20% { transform: translateX(-4px) }
+  40% { transform: translateX(4px) }
+  60% { transform: translateX(-3px) }
+  80% { transform: translateX(2px) }
+}
+/* 由 app.js 在提交失败时给输入框加上，短暂抖动提示 */
+.field-error-shake { animation: sp-shake .3s var(--ease-out) }
+
+/* ---------- 可访问性：尊重"减少动效"偏好 ----------
+   部分用户（前庭功能障碍等）会因动画产生生理不适。
+   这是基本无障碍要求，必须遵守。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .card--detail:hover,
+  .card--icon:hover,
+  .sortable-chosen,
+  .sortable-drag { transform: none; }
+}
+
 /* ---------- 响应式 ---------- */
 /* 网格不设断点：原版线上实测 743px 与 1440px 都用同一组 minmax(200/80,1fr)，
    列数由容器宽度自然决定（与 auto-fill 语义一致） */

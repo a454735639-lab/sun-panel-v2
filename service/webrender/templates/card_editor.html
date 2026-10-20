@@ -5,7 +5,7 @@
           hx-post="/hx/card/save"
           hx-target="#group-cards-{{ .Card.ItemIconGroupId }}"
           hx-swap="outerHTML"
-          hx-on::after-request="if(event.detail.successful)document.querySelector('.modal-backdrop').remove()">
+          hx-on::after-request="if(event.detail.successful)closeModal()">
 
       <h3 class="modal-title">{{ if .IsNew }}添加卡片{{ else }}编辑卡片{{ end }}</h3>
 
@@ -137,10 +137,10 @@
                   data-confirm-action='{"title": "确认删除卡片", "message": "确定删除这张卡片？此操作不可撤销。", "okText": "删除", "requireInput": "", "type": "danger"}'
                   hx-target="#card-{{ .Card.ID }}"
                   hx-swap="outerHTML"
-                  hx-on::after-request="document.querySelector('.modal-backdrop').remove()" onclick="confirmHx(this, event)">删除</button>
+                  hx-on::after-request="closeModal()" onclick="confirmHx(this, event)">删除</button>
         {{ end }}
         <span class="spacer"></span>
-        <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>
+        <button type="button" class="btn" onclick="closeModal()">取消</button>
         <button type="submit" class="btn btn--primary">保存</button>
       </div>
     </form>

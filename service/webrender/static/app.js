@@ -571,7 +571,115 @@
   })
 
 
-  /* ---------- 服务状态小组件 ---------- */
+  /* ---------- 交互动效驱动 ----------
+ *
+ * htmx 没有 Vue 的 transition 机制，进出场动画要自己驱动。
+ * 这里统一挂三个钩子，覆盖全站：
+ *   1. 弹窗（#modal-host）：进入淡入+上浮，退出先播反向动画再移除
+ *   2. 局部刷新：内容淡入，消除"闪一下"
+ *   3. 按钮：请求期间进入 loading，同时禁用防重复提交
+ *
+ * 为什么统一在 #modal-host 上做：全站弹窗都渲染进这个容器
+ * （见 panel.html / group_cards.html 的 hx-target），一处覆盖所有场景。
+ */
+;(function () {
+  var MODAL_HOST = 'modal-host'
+  var MODAL_EXIT_MS = 180   // 与 CSS --dur-slow 对应，略短留余量
+
+  function hostEl(id) { return document.getElementById(id) }
+
+  // ---- 弹窗进入：内容已插入，下一帧加 .is-open 触发过渡 ----
+  function modalEnter(host) {
+    var backdrop = host.querySelector('.modal-backdrop')
+    if (!backdrop) return
+    // 先确保处于初始态，再加类，否则同一帧内两种状态会被合并、看不到动画
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { backdrop.classList.add('is-open') })
+    })
+  }
+
+  // ---- 局部刷新淡入 ----
+  function fadeIn(el) {
+    if (!el || el === hostEl(MODAL_HOST)) return  // 弹窗有自己的动画
+    el.classList.remove('fade-enter')
+    void el.offsetWidth   // 强制重排，重启 CSS 动画
+    el.classList.add('fade-enter')
+  }
+
+  document.addEventListener('htmx:afterSwap', function (e) {
+    var t = e.detail && e.detail.target
+    if (!t) return
+    if (t.id === MODAL_HOST) modalEnter(t)
+    else fadeIn(t)
+  })
+
+  // ---- 弹窗退出：拦截替换，先播退场动画 ----
+  document.addEventListener('htmx:beforeSwap', function (e) {
+    var t = e.detail && e.detail.target
+    if (!t || t.id !== MODAL_HOST) return
+    var backdrop = t.querySelector('.modal-backdrop')
+    if (!backdrop) return
+    // 如果这次是"关闭"（目标内容为空），先播反向动画
+    var incoming = e.detail.serverResponse || ''
+    if (incoming.trim() !== '') return   // 换新内容，交给 afterSwap 处理进入
+
+    e.detail.shouldSwap = false
+    backdrop.classList.remove('is-open')
+    backdrop.classList.add('is-closing')
+    setTimeout(function () { t.innerHTML = '' }, MODAL_EXIT_MS)
+  })
+
+  /* ---- 统一关闭弹窗（带退场动画）----
+   * 之前各处用的是 querySelector('.modal-backdrop').remove()，
+   * 直接摘除 DOM 会让退出动画来不及播。全站改为调用本函数。
+   * 保留一个兜底：若动画不可用（元素不存在），直接清空容器。 */
+  window.closeModal = function () {
+    var host = hostEl(MODAL_HOST)
+    var backdrop = host && host.querySelector('.modal-backdrop')
+    if (!backdrop) {
+      if (host) host.innerHTML = ''
+      return
+    }
+    backdrop.classList.add('is-closing')
+    backdrop.classList.remove('is-open')
+    setTimeout(function () {
+      if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop)
+      // 清空可能残留的其它节点
+      if (host) host.innerHTML = ''
+    }, MODAL_EXIT_MS)
+  }
+
+  // ---- 按钮加载态 ----
+  function findBtn(elt) {
+    if (!elt || !elt.closest) return null
+    return elt.closest('button, .btn, a.btn')
+  }
+  document.addEventListener('htmx:beforeRequest', function (e) {
+    var b = findBtn(e.detail && e.detail.elt)
+    if (!b) return
+    b.classList.add('is-loading')
+    if (b.tagName === 'BUTTON') b.disabled = true
+  })
+  function clearLoading(e) {
+    var b = findBtn(e.detail && e.detail.elt)
+    if (!b) return
+    b.classList.remove('is-loading')
+    if (b.tagName === 'BUTTON') b.disabled = false
+  }
+  document.addEventListener('htmx:afterRequest', clearLoading)
+  document.addEventListener('htmx:responseError', clearLoading)
+  document.addEventListener('htmx:sendError', clearLoading)
+  document.addEventListener('htmx:timeout', clearLoading)
+
+  // ---- Esc 关闭弹窗（顺带补上，属常见预期）----
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return
+    var host = hostEl(MODAL_HOST)
+    if (host && host.querySelector('.modal-backdrop')) window.closeModal()
+  })
+})();
+
+/* ---------- 服务状态小组件 ---------- */
   var WIDGET_POLL_MS = 30000
 
   function widgetCardIds() {

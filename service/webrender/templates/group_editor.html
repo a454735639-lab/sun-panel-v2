@@ -1,5 +1,5 @@
 {{/* 分组编辑弹窗。数据：.Group .IsNew .CardStyle */}}
-<div class="modal-backdrop" onclick="if(event.target===this).remove()">
+<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <form class="modal-body" hx-post="/hx/group/save" hx-swap="none">
       <h3 class="modal-title">{{ if .IsNew }}新建分组{{ else }}编辑分组{{ end }}</h3>
@@ -51,7 +51,7 @@
                   hx-swap="none" onclick="confirmHx(this, event)">删除</button>
         {{ end }}
         <span class="spacer"></span>
-        <button type="button" class="btn" onclick="document.querySelector('.modal-backdrop').remove()">取消</button>
+        <button type="button" class="btn" onclick="closeModal()">取消</button>
         <button type="submit" class="btn btn--primary">保存</button>
       </div>
     </form>
