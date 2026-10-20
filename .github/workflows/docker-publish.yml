@@ -68,8 +68,12 @@ jobs:
           sbom: true
           provenance: true
 
-      # 自检：镜像内不应再有 web/ 目录（Vue 产物在服务端已无引用）
-      - name: Verify image (no legacy web/, embed static works)
+      # 自检：镜像应同时提供 SSR 与 Vue 两套前端
+      #
+      # 说明：本步骤原先断言"镜像内不应有 /app/web"——那是纯 SSR 时期的约束。
+      # 现在 Vue 前端恢复并挂载在 /v2/，产物就应存在于 /app/web，
+      # 故断言方向反转：必须有 /app/web，且 /v2/ 能正常返回入口页。
+      - name: Verify image (web present, both frontends reachable)
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
@@ -79,18 +83,35 @@ jobs:
           docker pull --platform linux/amd64 "$TAG"
           echo "--- /app 内容 ---"
           docker run --rm --entrypoint sh "$TAG" -c 'ls -la /app'
-          if docker run --rm --entrypoint sh "$TAG" -c 'test -d /app/web'; then
-            echo "::error::镜像中仍存在 /app/web，Vue 产物未被移除"
+
+          # Vue 产物必须存在，且入口页与 assets 齐全
+          if ! docker run --rm --entrypoint sh "$TAG" -c 'test -f /app/web/index.html'; then
+            echo "::error::镜像缺少 /app/web/index.html（Vue 前端产物未打包）"
             exit 1
           fi
-          echo "自检通过：无 /app/web"
+          echo "自检通过：/app/web 存在"
+
           docker run -d --name sp-check -p 13002:3002 "$TAG"
           for i in $(seq 1 20); do
             if curl -fsS http://127.0.0.1:13002/healthz >/dev/null 2>&1; then break; fi
             sleep 2
           done
+
           curl -fsS http://127.0.0.1:13002/healthz && echo "healthz OK"
+
+          # SSR 侧：embed 的静态资源仍可访问
           curl -fsS http://127.0.0.1:13002/static/htmx.min.js >/dev/null && echo "embed static OK"
+          curl -fsS -o /dev/null http://127.0.0.1:13002/login && echo "SSR /login OK"
+
+          # Vue 侧：入口页与 assets 均可访问
+          curl -fsS -o /dev/null http://127.0.0.1:13002/v2/ && echo "Vue /v2/ OK"
+          V2JS="$(curl -fsS http://127.0.0.1:13002/v2/ | grep -oE '/v2/assets/index-[^"]*\.js' | head -1)"
+          if [ -z "$V2JS" ]; then
+            echo "::error::/v2/ 入口页中未找到 assets 引用"
+            exit 1
+          fi
+          curl -fsS -o /dev/null "http://127.0.0.1:13002$V2JS" && echo "Vue asset OK ($V2JS)"
+
           curl -s -o /dev/null -w "docker endpoint: %{http_code}\n" -X POST \
             -H "Content-Type: application/json" -d '{"containerIds":["x"]}' \
             http://127.0.0.1:13002/api/docker/container/getContainerStates

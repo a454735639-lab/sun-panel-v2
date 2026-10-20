@@ -30,8 +30,15 @@ WORKDIR /web
 
 # 先只拷依赖清单，让依赖安装这层可被缓存复用
 COPY package.json package-lock.json ./
-# 用 npm ci 而非 install：严格按 lock 文件安装，构建可复现。
-# 注意本仓库的 lock 是 package-lock.json（npm），不是 pnpm-lock.yaml。
+# 用 npm ci：严格按 lock 安装，构建可复现。
+#
+# 关于跨平台：rollup（vite 的打包器）把各平台二进制声明为 optionalDependencies，
+# 而 npm 默认只装当前平台那一个。本 lock 在 Windows 上生成时只含 win32，
+# 导致 CI 在 Linux(Alpine) 上 `vite build` 报 MODULE_NOT_FOUND
+# （requireStack 指向 rollup/dist/native.js）。
+# 解决方式是在 package.json 里**显式声明**所需的 Linux 平台包
+# （见 optionalDependencies 的注释），使它们被写入 lock。
+# 这样 npm ci 在两种平台都能装到正确二进制，无需退化成 npm install。
 RUN npm ci --no-audit --no-fund
 
 # 再拷前端源码与配置
