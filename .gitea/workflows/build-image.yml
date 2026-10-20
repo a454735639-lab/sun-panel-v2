@@ -164,3 +164,91 @@ jobs:
           done
           docker rm -f "$NAME" >/dev/null 2>&1 || true
           [ "$ok" = 1 ]
+
+      - name: 10. 打 git tag 并创建 Release
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -eu
+          # tag 格式：v<版本号>-<commit短哈希>
+          # 用短哈希保证唯一 —— 因为版本号文件可能连续多次 push 都不变，
+          # 重复打同一个 tag 会失败。
+          TAG="v${VERSION}-${SHORT_SHA}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "准备发布 tag：$TAG"
+
+          cd "$SRC"
+
+          # 该 tag 已存在则跳过（重复 push 同 commit 时）
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q "$TAG"; then
+            echo "tag $TAG 已存在，跳过创建 Release"
+            exit 0
+          fi
+
+          # 用 API 创建 Release（会自动创建对应 tag）
+          # 注意：Gitea 创建 Release 时 target_commitish 指向的 commit 若已有同名 tag 会冲突，
+          #       这里 tag 带短哈希，天然唯一。
+          BODY="$(cat <<EOF
+## Sun-Panel-v2 ${VERSION}
+
+自动构建的 arm64 镜像（aarch64，适配 ARM NAS）。
+
+### 镜像
+
+\`\`\`sh
+docker pull 192.168.3.20:3003/gitadmin/sunpanel:${VERSION}
+docker pull 192.168.3.20:3003/gitadmin/sunpanel:latest
+\`\`\`
+
+### 运行
+
+\`\`\`sh
+docker run -d --name sun-panel \\
+  -p 3002:3002 \\
+  -v /volume1/docker/sunpanel/data:/data \\
+  192.168.3.20:3003/gitadmin/sunpanel:${VERSION}
+\`\`\`
+
+### 构建信息
+
+| 项 | 值 |
+|---|---|
+| 版本 | \`${VERSION}\` |
+| commit | \`${commit}\` |
+| 镜像 tag | \`${VERSION}\` / \`latest\` / \`sha-${SHORT_SHA}\` |
+| 架构 | linux/arm64 |
+
+> 本 Release 由 Gitea Actions 自动创建。
+EOF
+)"
+
+          python3 -c "
+          import json, os, urllib.request, urllib.error
+          payload = {
+              'tag_name': os.environ['TAG'],
+              'name': 'Sun-Panel-v2 ' + os.environ['VERSION'],
+              'body': '''$BODY''',
+              'target_commitish': os.environ['commit'],
+              'draft': False,
+              'prerelease': False,
+          }
+          req = urllib.request.Request(
+              'http://gitea:3000/api/v1/repos/gitadmin/Sunpanel/releases',
+              data=json.dumps(payload).encode(),
+              headers={
+                  'Content-Type': 'application/json',
+                  'Authorization': 'token ' + os.environ["RELEASE_TOKEN"],
+              },
+              method='POST')
+          try:
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  d = json.load(r)
+                  print('Release 创建成功:', d['tag_name'], '->', d.get('html_url', ''))
+          except urllib.error.HTTPError as e:
+              body = e.read().decode()
+              if e.code == 409:
+                  print('Release 已存在，跳过:', e.code)
+              else:
+                  print('创建失败:', e.code, body)
+                  raise SystemExit(1)
+          "
