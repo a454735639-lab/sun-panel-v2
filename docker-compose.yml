@@ -1,14 +1,32 @@
-version: "3.2"
+# Sun-Panel-V2 部署编排
+#
+# 数据统一持久化到 /data（配置、数据库、上传、运行期），升级只换镜像即可。
+# 启动：docker compose up -d
+# 升级：docker compose pull && docker compose up -d
 
 services:
-  sun-panel:
-    image: 'ghcr.io/75412701/sun-panel-v2:latest'
-    container_name: sun-panel-v2
-    volumes:
-    - ./conf:/app/conf
-    - ./uploads:/app/uploads
-    - ./database:/app/database
-    # - ./runtime:/app/runtime
+  sunpanel-v2:
+    # CI 构建的多架构镜像（linux/amd64 + linux/arm64，NAS 自动匹配）
+    #   dev    —— main 分支每次推送自动更新（当前建议用这个）
+    #   latest —— 推送 v* 标签时才生成
+    image: ghcr.io/a454735639-lab/sun-panel-v2:dev
+    container_name: sunpanel-v2
+    restart: unless-stopped
+
     ports:
-    - 3002:3002
-    restart: always
+      - "3002:3002"
+
+    environment:
+      TZ: Asia/Shanghai
+
+      # ---- 初始管理员账号 ----
+      # 仅当数据库里一个用户都没有时生效；已有用户时被忽略，
+      # 即改这两个变量不会重置现有密码。
+      SUNPANEL_ADMIN_USERNAME: ${SUNPANEL_ADMIN_USERNAME:-admin}
+      SUNPANEL_ADMIN_PASSWORD: ${SUNPANEL_ADMIN_PASSWORD:-123456}
+
+    volumes:
+      # 全部持久化数据（conf / database / uploads / runtime）
+      - ./data:/data
+      # 需要显示 Docker 容器状态时启用（只读挂载）
+      - /var/run/docker.sock:/var/run/docker.sock:ro
