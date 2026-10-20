@@ -1,6 +1,6 @@
 卡片编辑弹窗。数据：.Card .Groups .IsNew .ContainerList .DockerAvailable */}}
-<div class="modal-backdrop" onclick="if(event.target===this)this.remove()">
-  <div class="modal">
+<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" role="dialog" aria-modal="true">
     <form class="modal-body"
           hx-post="/hx/card/save"
           hx-target="#group-cards-{{ .Card.ItemIconGroupId }}"

@@ -1,11 +1,66 @@
 {{ template "head" . }}
 
 <main class="panel">
-  <div class="empty-state">
-    <h1 style="font-size:20px;margin-bottom:8px">{{ default "出错了" .Title }}</h1>
-    <p style="color:var(--text-dim)">{{ .Error }}</p>
-    <p style="margin-top:18px"><a class="btn" href="/">返回首页</a></p>
+  <div class="empty-state error-state">
+    <h1 class="error-title">{{ default "出错了" .Title }}</h1>
+
+    {{ if .Error }}
+    <p class="error-msg">{{ .Error }}</p>
+    {{ end }}
+
+    {{/* 按错误性质给出可操作的排查建议，而不是只丢一句报错 */}}
+    {{ if .Hints }}
+    <ul class="error-hints">
+      {{ range .Hints }}<li>{{ . }}</li>{{ end }}
+    </ul>
+    {{ end }}
+
+    <div class="error-actions">
+      <a class="btn btn--primary" href="/">返回首页</a>
+      {{/* 能返回上一页时提供，比强制回首页更贴近用户意图 */}}
+      <button type="button" class="btn"
+              onclick="if(history.length>1){history.back()}else{location.href='/'}">返回上一页</button>
+      <button type="button" class="btn" onclick="location.reload()">重试</button>
+    </div>
+
+    {{ if .Detail }}
+    <details class="error-detail">
+      <summary>技术详情</summary>
+      <pre>{{ .Detail }}</pre>
+      <button type="button" class="btn btn--sm" onclick="copyErrorText(this)">复制详情</button>
+    </details>
+    {{ end }}
+
+    <p class="error-foot">如果问题持续，请附上技术详情反馈。</p>
   </div>
 </main>
+
+<script>
+  function copyErrorText(btn) {
+    var pre = btn.parentNode.querySelector('pre')
+    if (!pre) return
+    var text = pre.textContent || ''
+    function done() {
+      btn.textContent = '已复制'
+      setTimeout(function () { btn.textContent = '复制详情' }, 1500)
+    }
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea')
+        ta.value = text
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        done()
+      } catch (e) { }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fallback)
+    } else {
+      fallback()
+    }
+  }
+</script>
 
 {{ template "foot" . }}

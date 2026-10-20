@@ -1,6 +1,6 @@
 {{ define "bookmark_form" }}
-<div class="modal-backdrop" onclick="if(event.target===this)this.remove()">
-  <div class="modal">
+<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" role="dialog" aria-modal="true">
     <form class="modal-body" hx-post="/hx/bookmark/save" hx-swap="none">
       <h3 class="modal-title">{{ if .IsFolder }}文件夹{{ else }}书签{{ end }}</h3>
       <input type="hidden" name="id" value="{{ .Bookmark.ID }}">
@@ -40,8 +40,8 @@
 {{ end }}
 
 {{ define "note_form" }}
-<div class="modal-backdrop" onclick="if(event.target===this)this.remove()">
-  <div class="modal">
+<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal" role="dialog" aria-modal="true">
     <form class="modal-body" hx-post="/hx/notepad/save" hx-swap="none">
       <h3 class="modal-title">便签</h3>
       <input type="hidden" name="id" value="{{ .Note.ID }}">

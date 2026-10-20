@@ -1,6 +1,6 @@
 {{ define "icon_picker" }}
-<div class="modal-backdrop" onclick="if(event.target===this)this.remove()">
-  <div class="modal modal--wide">
+<div class="modal-backdrop" onclick="if(event.target===this)closeModal()">
+  <div class="modal modal--wide" role="dialog" aria-modal="true">
     <div class="modal-body">
       <h3 class="modal-title">选择图标</h3>
 

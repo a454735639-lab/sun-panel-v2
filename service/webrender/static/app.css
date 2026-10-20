@@ -649,6 +649,119 @@ body.sorting .grid { touch-action: none; }
 .sortable-chosen,
 .sortable-drag { touch-action: none; }
 
+/* ---------- 错误页 ---------- */
+.error-state { max-width: 560px; }
+.error-title { font-size: 20px; margin: 0 0 10px; }
+.error-msg {
+  color: var(--text-dim);
+  margin: 0 0 14px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.error-hints {
+  text-align: left;
+  margin: 0 0 18px;
+  padding-left: 20px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.9;
+}
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.error-detail {
+  text-align: left;
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.error-detail summary { cursor: pointer; padding: 4px 0; }
+.error-detail pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, .22);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 220px;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
+}
+.error-foot { font-size: 12px; color: var(--text-dim); margin: 0; }
+
+/* ---------- 骨架屏 ----------
+   用于异步加载期间的占位。比白屏更能传达"正在加载"，
+   实测面板本身很快，但网络慢时仍会有一段等待。
+   用背景渐变动画而非逐元素闪烁，开销更低。 */
+@keyframes sp-skeleton {
+  0% { background-position: -200px 0 }
+  100% { background-position: calc(200px + 100%) 0 }
+}
+.skeleton {
+  background-color: rgba(255, 255, 255, .06);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, .06) 0px,
+    rgba(255, 255, 255, .13) 40px,
+    rgba(255, 255, 255, .06) 80px
+  );
+  background-size: 200px 100%;
+  background-repeat: no-repeat;
+  animation: sp-skeleton 1.2s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+.skeleton-card {
+  height: 70px;
+  border-radius: var(--radius);
+}
+.skeleton-line {
+  height: 12px;
+  margin: 8px 0;
+}
+.skeleton-line--short { width: 55%; }
+
+/* 骨架屏容器：默认隐藏，由 JS 在请求期间加 .is-show 显示。
+   不依赖 htmx 的类选择器（那需要精确的兄弟关系，脆弱），
+   改用显式类切换，行为可预测。 */
+.skeleton-wrap {
+  display: none;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 18px;
+}
+.skeleton-wrap.is-show { display: grid; }
+
+/* ---------- 快捷键提示徽标 ----------
+   让用户知道有 / 快捷键可用；点击本身也能聚焦搜索框，
+   对不知道快捷键的人同样是有效的操作入口。 */
+.kbd-hint {
+  flex: 0 0 auto;
+  min-width: 22px; height: 22px;
+  padding: 0 5px;
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  line-height: 1;
+  color: rgba(255, 255, 255, .55);
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+.kbd-hint:hover {
+  color: rgba(255, 255, 255, .85);
+  background: rgba(255, 255, 255, .14);
+}
+
 /* ---------- 可访问性：隐藏仅用于屏幕阅读器的文本 ---------- */
 .sr-only {
   position: absolute;

@@ -93,9 +93,12 @@ func Settings(c *gin.Context) {
 	case "gallery":
 		files := []models.File{}
 		if global.Db != nil {
-			global.Db.Where("user_id = ?", user.ID).Order("id desc").Limit(500).Find(&files)
+			global.Db.Where("user_id = ?", user.ID).Order("id desc").Limit(galleryLimit).Find(&files)
 		}
 		data["Files"] = files
+		// 同时查真实总数：只显示 len(files) 会在数据超过上限时给错数字
+		total := countRows(&models.File{}, user.ID)
+		data["FileMeta"] = NewListMeta(len(files), total, galleryLimit)
 
 	case "users":
 		users := []models.User{}

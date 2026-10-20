@@ -122,7 +122,15 @@ CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .Containe
 {{ define "group_cards_inner" }}
   {{ $style := .CardStyle.Style }}
   {{ $group := . }}
-<div class="grid grid--{{ if eq $style 0 }}detail{{ else if eq $style 2 }}large{{ else }}icon{{ end }}" id="group-cards-{{ .ID }}">
+{{/* 骨架屏：仅在请求超过 250ms 时由 JS 显示（短请求不闪，见 app.js）。
+     放在网格之前，供 htmx 刷新该分组时作占位。 */}}
+<div class="skeleton-wrap" aria-hidden="true">
+  <div class="skeleton skeleton-card"></div>
+  <div class="skeleton skeleton-card"></div>
+  <div class="skeleton skeleton-card"></div>
+</div>
+<div class="grid grid--{{ if eq $style 0 }}detail{{ else if eq $style 2 }}large{{ else }}icon{{ end }}" id="group-cards-{{ .ID }}"
+     aria-live="polite" aria-label="{{ .Title }} 的卡片列表">
   {{ range .Items }}
     {{ template "card" (dict "Group" $group "ID" .ID "Title" .Title "Description" .Description "OpenUrl" .OpenUrl "WanUrl" .WanUrl "LanUrl" .LanUrl "OpenMethod" .OpenMethod "CardType" .CardType "Icon" .Icon "Initial" .Initial "WidgetType" .WidgetType "DockerContainerID" .DockerContainerID "ContainerState" .ContainerState) }}
   {{ end }}

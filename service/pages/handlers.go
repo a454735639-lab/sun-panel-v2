@@ -22,11 +22,18 @@ func Panel(c *gin.Context) {
 	}
 	groups, err := loadGroups(c, user.ID)
 	if err != nil {
+		// 注意：模板读的是 .Error（原先传的是 .Message，导致错误文字显示不出来）
 		webrender.Render(c, http.StatusInternalServerError, "error.html", gin.H{
 			"Title":     "出错了",
 			"SiteTitle": siteTitle(),
 			"Theme":     themeMode(c),
-			"Message":   err.Error(),
+			"Error":     "加载面板数据失败。",
+			"Hints": []string{
+				"确认数据库文件可读写（默认在 data/database/ 下）。",
+				"若刚升级过版本，检查数据目录挂载是否正确。",
+				"查看容器日志中同时刻的报错以定位具体原因。",
+			},
+			"Detail": err.Error(),
 		})
 		return
 	}

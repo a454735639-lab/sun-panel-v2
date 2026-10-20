@@ -1,6 +1,14 @@
 {{ define "tab_gallery" }}
 <h3 class="tab-title">图库</h3>
+{{/* 显示真实总数（而非 len .Files）。数据超过查询上限时给出明确提示，
+     避免"有 600 张却显示共 500 个"这种误导。 */}}
+{{ with .FileMeta }}
+<p class="tab-desc">
+  已上传的图片文件。共 {{ .Total }} 个{{ if .Truncated }}，<strong>当前仅列出最近 {{ .Shown }} 个</strong>（另有 {{ .Remaining }} 个未显示）{{ end }}。
+</p>
+{{ else }}
 <p class="tab-desc">已上传的图片文件。共 {{ len .Files }} 个。</p>
+{{ end }}
 
 <div class="tab-block">
   <h4>上传</h4>

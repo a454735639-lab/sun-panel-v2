@@ -4,6 +4,27 @@
 (function () {
   'use strict'
 
+  /* ---------- 动效偏好（必须最先定义，供全文使用）----------
+   * CSS 侧已用 @media (prefers-reduced-motion: reduce) 把动画时长压到 0.01ms，
+   * 但 JS 里仍有硬编码的等待时长（弹窗退场、Toast 移除、刷新前停顿）。
+   * 在"减少动效"模式下动画瞬间就结束，用户却还要多等 —— 反而更慢。
+   * 这里读取偏好并把等待时长归零。
+   *
+   * 用 matchMedia 而非一次性读取：用户可能在系统里中途切换。
+   */
+  var mqReduced = null
+  try {
+    mqReduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+  } catch (e) { mqReduced = null }
+
+  window.prefersReducedMotion = function () {
+    return !!(mqReduced && mqReduced.matches)
+  }
+  /** motionMs(full) —— 正常返回 full，减少动效时返回 0 */
+  window.motionMs = function (full) {
+    return window.prefersReducedMotion() ? 0 : full
+  }
+
   /* ---------- 时钟 ---------- */
   var WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
 
@@ -174,7 +195,6 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot)
   else boot()
 
-
   /* ---------- 拖拽排序 ---------- */
   var sortInstances = []
 
@@ -246,7 +266,6 @@
     postJSON('/hx/card/sort', { groupId: groupId, ids: ids }, '顺序已保存')
   }
 
-
   /* ---------- 书签 / 便签弹窗 ---------- */
   window.openBookmarkForm = function (id, isFolder, parentId) {
     var url = '/hx/bookmark/form?id=' + (id || 0) + '&isFolder=' + (isFolder || 0) +
@@ -291,7 +310,6 @@
       groupSortable = null
     }
   }
-
 
   /* ---------- 内外网自动判定（连通性探测） ----------
    * 服务端已按客户端 IP 给了一次初判；这里用真实连通性做兜底：
@@ -452,7 +470,6 @@
   document.addEventListener('scroll', hideCtxMenu, true)
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') hideCtxMenu() })
 
-
   /* ---------- 图标选择器 ---------- */
   var iconSearchTimer = null
 
@@ -516,7 +533,6 @@
     if (backdrop && backdrop.querySelector('.picker-tabs')) backdrop.remove()
   }
 
-
   /* ---------- 主题切换 ---------- */
   window.toggleTheme = function () {
     var cur = document.documentElement.getAttribute('data-theme')
@@ -526,7 +542,6 @@
     // 记一年
     document.cookie = 'sunpanel_theme=' + next + ';path=/;max-age=31536000;SameSite=Lax'
   }
-
 
   /* ---------- Toast 反馈 ---------- */
   window.showToast = function (msg, type) {
@@ -540,7 +555,7 @@
     requestAnimationFrame(function () { el.classList.add('toast--in') })
     setTimeout(function () {
       el.classList.remove('toast--in')
-      setTimeout(function () { el.remove() }, 260)
+      setTimeout(function () { el.remove() }, window.motionMs(260))
     }, 1800)
   }
 
@@ -557,7 +572,7 @@
     }
     e.detail.shouldSwap = false
     window.showToast('已保存')
-    setTimeout(function () { location.reload() }, 600)
+    setTimeout(function () { location.reload() }, window.motionMs(600))
   })
 
   // 非 GET 请求失败时也提示
@@ -569,7 +584,6 @@
       window.showToast(msg || '操作失败', 'err')
     }
   })
-
 
   /* ---------- 交互动效驱动 ----------
  *
@@ -584,7 +598,8 @@
  */
 ;(function () {
   var MODAL_HOST = 'modal-host'
-  var MODAL_EXIT_MS = 180   // 与 CSS --dur-slow 对应，略短留余量
+  // 与 CSS --dur-slow 对应；减少动效时归零（见 window.motionMs）
+  function modalExitMs() { return window.motionMs(180) }
 
   function hostEl(id) { return document.getElementById(id) }
 
@@ -626,7 +641,7 @@
     e.detail.shouldSwap = false
     backdrop.classList.remove('is-open')
     backdrop.classList.add('is-closing')
-    setTimeout(function () { t.innerHTML = '' }, MODAL_EXIT_MS)
+    setTimeout(function () { t.innerHTML = '' }, modalExitMs())
   })
 
   /* ---- 统一关闭弹窗（带退场动画）----
@@ -646,7 +661,7 @@
       if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop)
       // 清空可能残留的其它节点
       if (host) host.innerHTML = ''
-    }, MODAL_EXIT_MS)
+    }, modalExitMs())
   }
 
   // ---- 按钮加载态 ----
@@ -671,12 +686,98 @@
   document.addEventListener('htmx:sendError', clearLoading)
   document.addEventListener('htmx:timeout', clearLoading)
 
+  /* ---- 骨架屏（延迟显示）----
+   * 面板本身渲染很快（实测 200 卡片约 19ms），多数请求不需要骨架 ——
+   * 若立刻显示反而会在极短时间内闪一下，比不显示更刺眼。
+   * 因此延迟 250ms 才显示：短请求感知不到，长请求才有占位。
+   * 这是骨架屏能否"帮上忙"的关键，不是可选项。
+   */
+  var SKELETON_DELAY = 250
+  var skeletonTimers = new WeakMap()
+
+  function skeletonFor(el) {
+    if (!el || !el.querySelector) return null
+    return el.querySelector('.skeleton-wrap')
+  }
+
+  document.body.addEventListener('htmx:beforeRequest', function (e) {
+    var t = e.detail && e.detail.target
+    if (!t) return
+    var sk = skeletonFor(t)
+    if (!sk) return
+    var timer = setTimeout(function () {
+      sk.classList.add('is-show')
+      // 内容期间先隐藏原内容，避免骨架与旧内容同时可见
+      var grid = t.querySelector('.grid')
+      if (grid) grid.style.visibility = 'hidden'
+    }, window.motionMs(SKELETON_DELAY))
+    skeletonTimers.set(t, timer)
+  })
+
+  function hideSkeleton(e) {
+    var t = e.detail && e.detail.target
+    if (!t) return
+    var timer = skeletonTimers.get(t)
+    if (timer) { clearTimeout(timer); skeletonTimers.delete(t) }
+    var sk = skeletonFor(t)
+    if (sk) sk.classList.remove('is-show')
+    var grid = t.querySelector('.grid')
+    if (grid) grid.style.visibility = ''
+  }
+  document.body.addEventListener('htmx:afterRequest', hideSkeleton)
+  document.body.addEventListener('htmx:responseError', hideSkeleton)
+  document.body.addEventListener('htmx:sendError', hideSkeleton)
+  document.body.addEventListener('htmx:timeout', hideSkeleton)
+  document.body.addEventListener('htmx:afterSwap', hideSkeleton)
+
   // ---- Esc 关闭弹窗（顺带补上，属常见预期）----
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return
     var host = hostEl(MODAL_HOST)
     if (host && host.querySelector('.modal-backdrop')) window.closeModal()
   })
+})();
+
+/* ---------- 键盘快捷键 ----------
+ * 面板是高频打开的页面，快捷键收益明显。
+ * 目前只做最常用的一条：/ 或 s 聚焦搜索框。
+ *
+ * 关键细节：**必须避开用户正在输入时按下的字符**。
+ * 若用户在便签/编辑框里打字，按下 "/" 应当正常输入，不能去聚焦搜索框。
+ * 判定方式：焦点在 input / textarea / contenteditable 内即跳过。
+ */
+(function () {
+  function isTyping() {
+    var el = document.activeElement
+    if (!el) return false
+    var tag = (el.tagName || '').toLowerCase()
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true
+    if (el.isContentEditable) return true
+    return false
+  }
+
+  function focusSearch() {
+    var box = document.querySelector('input[type=search][name=q]')
+      || document.querySelector('.hero-search input')
+      || document.querySelector('input[type=search]')
+    if (!box) return false
+    box.focus()
+    // 已有内容时全选，便于直接重输
+    try { box.select() } catch (e) { }
+    return true
+  }
+
+  document.addEventListener('keydown', function (e) {
+    // 带修饰键的组合不拦截（留给浏览器/系统）
+    if (e.ctrlKey || e.metaKey || e.altKey) return
+    if (e.key !== '/' && e.key !== 's' && e.key !== 'S') return
+    if (isTyping()) return          // 正在输入，交还给输入框
+    if (e.key === '/') e.preventDefault()   // 阻止 Firefox 的快速查找条
+    if (focusSearch()) e.preventDefault()
+  })
+
+  /* 供模板上的提示按钮调用（可发现性：让用户知道有这个快捷键） */
+  window.focusSearchBox = focusSearch
 })();
 
 /* ---------- 服务状态小组件 ---------- */

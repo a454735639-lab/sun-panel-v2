@@ -26,9 +26,13 @@
   {{ if .Panel.SearchBoxShow }}
   <form class="hero-search" action="/search" method="get" role="search"
         style="background:{{ default "#2a2a2a6b" .Panel.SearchBoxBackground }};border-color:{{ default "#cccccc" .Panel.SearchBoxBorderColor }}">
-    {{ if .Panel.SearchBoxSearchIcon }}<span class="hero-search-icon">⌕</span>{{ end }}
+    {{ if .Panel.SearchBoxSearchIcon }}<span class="hero-search-icon" aria-hidden="true">⌕</span>{{ end }}
     <input type="search" name="q" placeholder="请输入搜索内容" autocomplete="off"
-           style="color:{{ default "#ffffff" .Panel.SearchBoxTextColor }}" enterkeyhint="search">
+           style="color:{{ default "#ffffff" .Panel.SearchBoxTextColor }}" enterkeyhint="search"
+           aria-label="搜索面板内的卡片与书签">
+    {{/* 快捷键提示：既告诉用户有 / 快捷键，点击也能直接聚焦 */}}
+    <button type="button" class="kbd-hint" onclick="focusSearchBox && focusSearchBox()"
+            title="按 / 或 s 快速聚焦搜索框" aria-label="聚焦搜索框（快捷键 / 或 s）">/</button>
   </form>
   {{ end }}
 
@@ -73,9 +77,9 @@
     {{ range .Groups }}
       <section class="group" id="group-{{ .ID }}">
         <h2 class="group-title" style="color:{{ default "#ffffff" .CardStyle.TextColor }}">
-          {{ if .Icon }}<span class="svg-online group-icon" data-icon="{{ .Icon }}"></span>{{ end }}
+          {{ if .Icon }}<span class="svg-online group-icon" data-icon="{{ .Icon }}" aria-hidden="true"></span>{{ end }}
           <span>{{ .Title }}</span>
-          <span class="group-count">{{ len .Items }}</span>
+          <span class="group-count" aria-label="{{ len .Items }} 个卡片">{{ len .Items }}</span>
           <span class="group-actions">
             <button type="button" class="card-btn" title="编辑分组" aria-label="编辑分组"
                     hx-get="/hx/group/{{ .ID }}/edit" hx-target="#modal-host" hx-swap="innerHTML">✎</button>
