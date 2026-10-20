@@ -17,6 +17,10 @@ export function defaultStatePanelConfig(): Panel.panelConfig {
     logoText: 'Sun-Panel',
     logoImageSrc: '',
     clockShowSecond: false,
+    // 时钟文字颜色。默认取白色 —— 必须显式给默认值，
+    // 否则颜色选择器会显示 #000000，而时钟实际继承的是白色（父级 iconTextColor），
+    // 用户会以为"设成了黑色却不生效"。默认值要与实际渲染一致。
+    clockColor: '#ffffff',
     searchBoxShow: false,
     searchBoxSearchIcon: false,
     marginBottom: 10,

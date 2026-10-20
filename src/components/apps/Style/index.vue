@@ -126,6 +126,25 @@ function resetPanelConfig() {
           <NInput v-model:value="panelState.panelConfig.logoText" type="text" show-count :maxlength="20" placeholder="请输入文字" />
         </div>
       </div>
+
+      <!-- Logo 图片：优先级高于文字（都填时显示图片）。
+           留空则回落文字，两者都空则整个 Logo 区不渲染。 -->
+      <div class="mt-[10px]">
+        <div>
+          {{ $t('apps.baseSettings.logoImage') }}
+        </div>
+        <div class="flex items-center mt-[5px]">
+          <NInput
+            v-model:value="panelState.panelConfig.logoImageSrc"
+            type="text"
+            clearable
+            placeholder="图片地址，留空则显示上方文字"
+          />
+        </div>
+        <div class="text-xs text-gray-500 mt-[4px] leading-relaxed">
+          {{ $t('apps.baseSettings.logoImageHint') }}
+        </div>
+      </div>
     </NCard>
 
     <NCard style="border-radius:10px" class="mt-[10px]" size="small">
@@ -135,6 +154,17 @@ function resetPanelConfig() {
       <div class="flex items-center mt-[5px]">
         <span class="mr-[10px]">{{ $t('apps.baseSettings.clockSecondShow') }}</span>
         <NSwitch v-model:value="panelState.panelConfig.clockShowSecond" />
+      </div>
+      <!-- 时钟文字颜色。默认 #ffffff，与时钟实际显示一致（见 store 里的默认值）。 -->
+      <div class="flex items-center mt-[10px]">
+        <span class="mr-[10px] whitespace-nowrap">{{ $t('apps.baseSettings.clockColor') }}</span>
+        <NColorPicker
+          v-model:value="panelState.panelConfig.clockColor"
+          :show-alpha="false"
+          size="small"
+          :modes="['hex']"
+          :swatches="['#ffffff', '#000000', '#f5f5f5', '#ffd666', '#69c0ff', '#95de64', '#ff9c6e', '#ffadd2']"
+        />
       </div>
     </NCard>
 

@@ -1216,17 +1216,34 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
       >
         <!-- 头 -->
         <div class="mx-[auto] w-[80%]">
-          <div class="flex mx-[auto] items-center justify-center text-white">
-            <div class="logo">
+          <div class="flex mx-[auto] items-center justify-center" :style="{ color: panelState.panelConfig.iconTextColor }">
+            <!-- Logo：优先用图片，未设置图片时回落到文字。
+                 两者都不设则整块不渲染，避免留下空占位把时钟挤偏。 -->
+            <div v-if="panelState.panelConfig.logoImageSrc" class="logo">
+              <img
+                :src="panelState.panelConfig.logoImageSrc"
+                alt=""
+                class="logo-image"
+              >
+            </div>
+            <div v-else-if="panelState.panelConfig.logoText" class="logo">
               <span class="text-2xl md:text-6xl font-bold text-shadow">
                 {{ panelState.panelConfig.logoText }}
               </span>
             </div>
-            <div class="divider text-base lg:text-2xl mx-[10px]">
+            <!-- 分隔符：仅在 Logo（图或字）存在时显示，
+                 否则会出现"左边一根竖线、右边一个时钟"的怪异布局 -->
+            <div
+              v-if="panelState.panelConfig.logoImageSrc || panelState.panelConfig.logoText"
+              class="divider text-base lg:text-2xl mx-[10px]"
+            >
               |
             </div>
             <div class="text-shadow">
-              <Clock :hide-second="!panelState.panelConfig.clockShowSecond" />
+              <Clock
+                :hide-second="!panelState.panelConfig.clockShowSecond"
+                :color="panelState.panelConfig.clockColor"
+              />
             </div>
           </div>
           <div v-if="panelState.panelConfig.searchBoxShow" class="flex mt-[20px] mx-auto sm:w-full lg:w-[80%]">
@@ -1472,6 +1489,16 @@ html {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+/* Logo 图片：限制高度避免大图把头部撑开，
+   宽度自适应以保持原始比例（不设 width，让 height 单边约束即可）。
+   max-width 用视口相对单位，窄屏时不会顶破容器。 */
+.logo-image {
+  height: clamp(36px, 6vw, 72px);
+  max-width: 40vw;
+  object-fit: contain;
+  display: block;
 }
 
 .sun-main {

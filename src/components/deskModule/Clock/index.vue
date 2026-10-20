@@ -4,6 +4,14 @@ import { t } from '@/locales'
 
 const props = defineProps<{
   hideSecond?: boolean
+  /**
+   * 时钟文字颜色。留空则沿用父级的文字颜色（默认白色）。
+   *
+   * 为什么用可选 prop 而不是直接读 store：
+   * Clock 是通用展示组件，不该依赖面板配置的具体结构；
+   * 由调用方决定颜色，组件可被复用（如放到别处、或在预览里用固定色）。
+   */
+  color?: string
 }>()
 
 interface CurrentDate {
@@ -67,7 +75,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="clock w-full text-center">
+  <!-- color 未设置时不写 style，让父级的 text-white 生效（保持原有外观） -->
+  <div
+    class="clock w-full text-center"
+    :style="color ? { color } : undefined"
+  >
     <span class="clock-time text-2xl sm:text-2xl md:text-3xl font-[600]">
       {{ currentDate.time }}
     </span>

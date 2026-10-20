@@ -126,7 +126,10 @@
       "uploadOrDragText": "点击上传替换图片或拖拽到框内",
       "vague": "模糊",
       "wallpaper": "壁纸",
-      "autoNetworkWallpaper": "自动获取网络壁纸"
+      "autoNetworkWallpaper": "自动获取网络壁纸",
+      "logoImage": "图片 LOGO",
+      "logoImageHint": "填写图片地址后，优先显示图片；留空则显示上方文字。",
+      "clockColor": "文字颜色"
     },
     "exportImport": {
       "appName": "导出导入",

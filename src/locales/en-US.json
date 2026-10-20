@@ -121,7 +121,10 @@
       "topMargin": "Top margin",
       "uploadOrDragText": "Click to upload or drag and drop into the box to replace the image",
       "vague": "Blur",
-      "wallpaper": "Wallpaper"
+      "wallpaper": "Wallpaper",
+      "logoImage": "Image Logo",
+      "logoImageHint": "If set, the image is shown instead of the text above. Leave empty to use text.",
+      "clockColor": "Text Color"
     },
     "exportImport": {
       "appName": "Export/Import",
