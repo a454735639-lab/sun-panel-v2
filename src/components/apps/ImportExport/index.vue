@@ -181,6 +181,12 @@ function importCheck() {
     try {
       importObj.value = importJsonString(jsonData.value)
       if (importObj.value) {
+        // SSR 版（服务端）导出的备份结构与本版不同，已在解析时自动转换。
+        // 必须告知用户：一是让他知道文件为何能被识别，
+        // 二是说明"未分组的卡片"是转换产生的，而非导入出错。
+        if (importObj.value.isConvertedFromSsr)
+          importWarning.value.push(t('apps.exportImport.convertedFromSsr'))
+
         if (!importObj.value.isPassCheckMd5())
           importWarning.value.push(t('apps.exportImport.fileModified'))
 
