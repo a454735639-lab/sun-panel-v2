@@ -30,6 +30,13 @@ export default defineConfig((env) => {
   const viteEnv = loadEnv(env.mode, process.cwd()) as unknown as ImportMetaEnv
 
   return {
+    // 由环境变量控制资源前缀。
+    // 之所以需要它：项目中同时存在两套前端 —— 后加的 SSR 版占据根路径
+    // （/ 、/login 、/settings …），Vue 版挂在 /v2/ 前缀下共存以便对比。
+    // 若不留前缀，Vue 的 /assets/*、/favicon.* 等绝对路径会与 SSR 的
+    // /static/* 及根路径请求互相干扰。
+    // 本地直接用 vite dev（带 proxy）时设为 "/" 即可。
+    base: viteEnv.VITE_PUBLIC_BASE || '/',
     resolve: {
       alias: {
         '@': path.resolve(process.cwd(), 'src'),

@@ -51,8 +51,17 @@ func SetNetMode(c *gin.Context) {
 		return
 	}
 	c.SetCookie(NetModeCookie, mode, 86400*365, "/", "", false, false)
-	c.Header("HX-Refresh", "true")
-	c.String(http.StatusOK, "")
+
+	// 不再返回 HX-Refresh。
+	//
+	// 原因：返回它会让 htmx 触发 location.reload()，而首页会把**全部**卡片
+	// 重新生成一遍 —— 实测 800 张卡片时 HTML 达 1.1MB，在弱 CPU 的 NAS 上
+	// 整页重载需数秒，表现为"点完半天没反应"。
+	//
+	// 而网络模式只影响卡片的 href，且模板已把 data-url（外网）与
+	// data-lan-url（内网）都下发，前端 applyNetMode() 可就地切换 href，
+	// 无需重新渲染。因此这里只负责存 cookie，切换由前端即时完成。
+	c.String(http.StatusOK, mode)
 }
 
 // SetTheme 切换主题

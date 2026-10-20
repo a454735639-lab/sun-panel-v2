@@ -22,3 +22,7 @@ service/runtime/
 # 构建产物
 /release/
 /dist/
+/node_modules/
+
+# Vue 前端构建产物（由 vite build 生成，部署时拷到 ./web）
+/web/

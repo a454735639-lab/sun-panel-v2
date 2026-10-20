@@ -13,8 +13,8 @@ func LoginInterceptor(c *gin.Context) {
 	// 继续执行后续的操作，再回来
 	// c.Next()
 
-	// 获得token
-	cToken := c.GetHeader("token")
+	// 获得token（兼容 Authorization: Bearer / token 头 / Cookie，见 token.go）
+	cToken := extractToken(c)
 
 	// 没有token信息视为未登录
 	if cToken == "" {
@@ -74,7 +74,7 @@ func LoginInterceptor(c *gin.Context) {
 func LoginInterceptorDev(c *gin.Context) {
 
 	// 获得token
-	token := c.GetHeader("token")
+	token := extractToken(c)
 	mUser := models.User{}
 
 	// 去库中查询是否存在该用户；否则返回错误

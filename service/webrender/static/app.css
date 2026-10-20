@@ -300,7 +300,12 @@ a { color: inherit; text-decoration: none; }
   background: var(--card-bg);
   border-radius: var(--radius);
   color: var(--card-fg, #fff);
-  transition: all .3s cubic-bezier(.4, 0, .2, 1);
+  /* 原先这里是 transition: all .3s —— `all` 会让 width/height/padding 等
+     触发重排的属性也参与过渡，卡片一多就明显卡顿（每次状态变化都要重排）。
+     改为只过渡合成属性（transform/box-shadow/background），不触发重排。 */
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              background var(--dur-base) var(--ease-out);
 }
 .card--detail:hover {
   box-shadow: var(--shadow-hover);
@@ -847,16 +852,12 @@ body.sorting .grid { touch-action: none; }
 }
 .toast--in { opacity: 1; transform: none; }
 
-/* ---------- 卡片悬停：轻微上浮 + 阴影扩散 ----------
-   比单纯的阴影变化更有"物理感"。位移控制在 2px，避免布局晃动。 */
-.card--detail,
-.card--icon {
-  transition: transform var(--dur-base) var(--ease-out),
-              box-shadow var(--dur-base) var(--ease-out),
-              background var(--dur-base) var(--ease-out);
-}
-.card--detail:hover,
-.card--icon:hover {
+/* ---------- 卡片悬停 ----------
+   .card--icon:hover 的上浮已在第 326 行定义（translateY(-3px)），
+   此处只补 .card--detail 的（原先没有）。
+   过渡属性来自卡片自身的 transition 声明（已从 transition:all 改为
+   只过渡 transform/box-shadow/background，避免尺寸属性参与过渡造成重排）。 */
+.card--detail:hover {
   transform: translateY(-2px);
 }
 
@@ -1544,7 +1545,10 @@ html[data-theme="light"] .card-widget--err { color: #c22b45; }
   border-radius: var(--radius);
   backdrop-filter: blur(10px);
   color: var(--card-fg, #fff);
-  transition: all .3s cubic-bezier(.4, 0, .2, 1);
+  /* 同 .card--detail：避免 transition:all 让尺寸类属性参与过渡造成重排卡顿 */
+  transition: transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out),
+              background var(--dur-base) var(--ease-out);
 }
 .card--large:hover {
   box-shadow: var(--shadow-hover);

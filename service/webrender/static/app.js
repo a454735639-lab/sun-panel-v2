@@ -389,6 +389,49 @@
       .catch(function () { /* 探测异常保持服务端初判 */ })
   }
 
+  /* 切换网络模式（供顶栏按钮调用）。
+   *
+   * 为什么需要这个函数而不是只靠 hx-post：
+   * 原先服务端返回 HX-Refresh，htmx 会执行 location.reload()，
+   * 首页要把**全部**卡片重新生成 —— 实测 800 张卡片时 HTML 达 1.1MB，
+   * 在弱 CPU 的 NAS 上整页重载需数秒，用户感受为"点完半天没反应"。
+   *
+   * 而网络模式只影响卡片 href，且模板已同时下发 data-url / data-lan-url，
+   * 所以这里就地把 href 改掉（applyNetMode），立即生效；
+   * cookie 的持久化交给按钮上的 hx-post 异步完成，不阻塞交互。
+   */
+  window.switchNetMode = function (mode) {
+    // 1) 就地切换所有双地址卡片的 href —— 无重排，即刻可见
+    if (mode === 'auto') {
+      // 自动模式：重新做一次连通性探测来决定用内网还是外网
+      var shell = document.querySelector('.shell[data-netmode]')
+      if (shell) {
+        shell.setAttribute('data-netmode', 'auto')
+        // 强制重跑探测（autoDetectNet 只在 data-netmode=auto 时工作）
+        autoDetectNet()
+      }
+    } else {
+      var shell2 = document.querySelector('.shell[data-netmode]')
+      if (shell2) shell2.setAttribute('data-netmode', mode)
+      applyNetMode(mode)
+    }
+
+    // 2) 更新按钮激活态（服务端不会重渲染，需前端自己切）
+    var btns = document.querySelectorAll('.netmode-btn')
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.remove('active')
+    }
+    var order = { auto: 0, lan: 1, wan: 2 }
+    var idx = order[mode]
+    if (idx != null && btns[idx]) btns[idx].classList.add('active')
+
+    // 3) 提示（短促，不打扰）
+    if (typeof showToast === 'function') {
+      var label = { auto: '自动', lan: '内网', wan: '外网' }[mode] || mode
+      showToast('已切换到' + label)
+    }
+  }
+
   /* ---------- 右键菜单 ---------- */
   var ctxTarget = null
 

@@ -15,7 +15,7 @@ import (
 func PublicModeInterceptor(c *gin.Context) {
 
 	// 获得token
-	cToken := c.GetHeader("token")
+	cToken := extractToken(c)
 	token := ""
 
 	// 没有token信息视为未登录

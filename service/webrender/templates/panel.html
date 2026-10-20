@@ -40,9 +40,19 @@
   <div class="corner-bar">
     <button type="button" class="theme-btn" onclick="toggleTheme()" title="切换主题" aria-label="切换主题">◐</button>
     <div class="netmode" title="内外网切换">
-      <button type="button" class="netmode-btn{{ if eq .NetMode "auto" }} active{{ end }}" hx-post="/hx/netmode/auto" hx-swap="none">自动</button>
-      <button type="button" class="netmode-btn{{ if eq .NetMode "lan" }} active{{ end }}" hx-post="/hx/netmode/lan" hx-swap="none">内网</button>
-      <button type="button" class="netmode-btn{{ if eq .NetMode "wan" }} active{{ end }}" hx-post="/hx/netmode/wan" hx-swap="none">外网</button>
+      {{/* 点击时先本地切换（applyNetMode 就地改 href，立即生效），
+           再把选择异步存到服务端。不触发整页重载 ——
+           首页全量卡片重新生成在弱 CPU 的 NAS 上要数秒，
+           是"点完半天没反应"的主因。 */}}
+      <button type="button" class="netmode-btn{{ if eq .NetMode "auto" }} active{{ end }}"
+              hx-post="/hx/netmode/auto" hx-swap="none"
+              onclick="switchNetMode('auto')">自动</button>
+      <button type="button" class="netmode-btn{{ if eq .NetMode "lan" }} active{{ end }}"
+              hx-post="/hx/netmode/lan" hx-swap="none"
+              onclick="switchNetMode('lan')">内网</button>
+      <button type="button" class="netmode-btn{{ if eq .NetMode "wan" }} active{{ end }}"
+              hx-post="/hx/netmode/wan" hx-swap="none"
+              onclick="switchNetMode('wan')">外网</button>
     </div>
     {{ if .LoggedIn }}
       <div class="user-menu">

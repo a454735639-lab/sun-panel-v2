@@ -31,6 +31,10 @@ func InitRouters(addr string) error {
 	// 服务端渲染页面 + htmx 端点 + 静态资源
 	InitSSR(router)
 
+	// Vue 前端（构建产物 ./web）挂载于 /v2/，与 SSR 版共存。
+	// 未构建时自动跳过，不影响纯 SSR 部署。
+	InitVueWeb(router)
+
 	global.Logger.Info("Sun-Panel is Started.  Listening and serving HTTP on ", addr)
 	return router.Run(addr)
 }
