@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,7 +34,7 @@ var (
 
 // FuncMap 模板辅助函数
 var FuncMap = template.FuncMap{
-	"formatBytes": FormatBytes,
+	"formatBytes":  FormatBytes,
 	"AssetVersion": AssetVersion,
 	"formatTime": func(t time.Time) string {
 		if t.IsZero() {
@@ -69,12 +70,81 @@ var FuncMap = template.FuncMap{
 		}
 		return m
 	},
+	// textOnBg 按背景色亮度返回黑或白文字色。
+	// 复刻原版 AppIcon 的 calculateLuminance：亮度 > 0.5 用黑，否则用白。
+	"textOnBg": TextOnBg,
 	"bgSrc": func(p string) string {
 		if p == "" || p == "defaultBackground.jpg" {
 			return "/static/defaultBackground.jpg"
 		}
 		return p
 	},
+}
+
+// DefaultIconBg 原版图标/卡片的默认背景色
+const DefaultIconBg = "#2a2a2a6b"
+
+// TextOnBg 按背景色亮度选择可读的文字颜色，返回 "#000000" 或 "#ffffff"。
+// 支持 #rgb / #rrggbb / #rrggbbaa / rgba(...) / rgb(...)；解析失败按深色处理。
+func TextOnBg(bg string) string {
+	r, g, b, ok := parseColor(bg)
+	if !ok {
+		return "#ffffff"
+	}
+	lum := (0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)) / 255
+	if lum > 0.5 {
+		return "#000000"
+	}
+	return "#ffffff"
+}
+
+// parseColor 解析颜色为 0-255 的 r,g,b
+func parseColor(s string) (int, int, int, bool) {
+	s = strings.TrimSpace(strings.ToLower(s))
+	if s == "" {
+		return 0, 0, 0, false
+	}
+	if strings.HasPrefix(s, "rgb") {
+		i := strings.Index(s, "(")
+		j := strings.Index(s, ")")
+		if i < 0 || j < i {
+			return 0, 0, 0, false
+		}
+		parts := strings.Split(s[i+1:j], ",")
+		if len(parts) < 3 {
+			return 0, 0, 0, false
+		}
+		var v [3]int
+		for k := 0; k < 3; k++ {
+			n, err := strconv.Atoi(strings.TrimSpace(parts[k]))
+			if err != nil {
+				return 0, 0, 0, false
+			}
+			v[k] = n
+		}
+		return v[0], v[1], v[2], true
+	}
+	if strings.HasPrefix(s, "#") {
+		h := s[1:]
+		switch len(h) {
+		case 3: // #rgb
+			h = string([]byte{h[0], h[0], h[1], h[1], h[2], h[2]})
+		case 4: // #rgba
+			h = string([]byte{h[0], h[0], h[1], h[1], h[2], h[2]})
+		case 6, 8: // #rrggbb / #rrggbbaa（忽略 alpha）
+		default:
+			return 0, 0, 0, false
+		}
+		if len(h) < 6 {
+			return 0, 0, 0, false
+		}
+		n, err := strconv.ParseUint(h[:6], 16, 32)
+		if err != nil {
+			return 0, 0, 0, false
+		}
+		return int(n>>16) & 0xff, int(n>>8) & 0xff, int(n) & 0xff, true
+	}
+	return 0, 0, 0, false
 }
 
 // FormatBytes 人类可读的字节数

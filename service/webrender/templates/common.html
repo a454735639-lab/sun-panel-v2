@@ -43,20 +43,23 @@
 {{end}}
 
 {{define "icon"}}
-{{/* 渲染一个图标。需要 .Icon（含 ItemType/Src/Text/BackgroundColor）和 .Size */}}
+{{/* 渲染一个图标。需要 .Icon（含 ItemType/Src/Text/BackgroundColor）和 .Size。
+     可选：.Transparent（不铺背景，由卡片承载）、.TextColor（显式文字色，缺省按背景亮度自动黑白） */}}
 {{ $size := default 44 .Size }}
 {{ $bg := default "#2a2a2a6b" .Icon.BackgroundColor }}
+{{ $tc := .TextColor }}
+{{ if not $tc }}{{ $tc = textOnBg $bg }}{{ end }}
 {{ if eq .Icon.ItemType 1 }}
-  <span class="ico ico--text" style="width:{{$size}}px;height:{{$size}}px;background:{{$bg}}">{{ .Icon.Text }}</span>
+  <span class="ico ico--text" style="width:{{$size}}px;height:{{$size}}px;color:{{$tc}};{{ if not .Transparent }}background:{{$bg}};{{ end }}">{{ .Icon.Text }}</span>
 {{ else if eq .Icon.ItemType 2 }}
-  <span class="ico ico--img" style="width:{{$size}}px;height:{{$size}}px;background:{{$bg}}">
+  <span class="ico ico--img" style="width:{{$size}}px;height:{{$size}}px;{{ if not .Transparent }}background:{{$bg}};{{ end }}">
     <img src="{{ .Icon.Src }}" alt="" loading="lazy">
   </span>
 {{ else if eq .Icon.ItemType 3 }}
-  <span class="ico ico--svg" style="width:{{$size}}px;height:{{$size}}px;background:{{$bg}}">
+  <span class="ico ico--svg" style="width:{{$size}}px;height:{{$size}}px;color:{{$tc}};{{ if not .Transparent }}background:{{$bg}};{{ end }}">
     <span class="svg-online" data-icon="{{ .Icon.Text }}" style="font-size:{{$size}}px"></span>
   </span>
 {{ else }}
-  <span class="ico ico--empty" data-initial="{{ if .Initial }}{{ .Initial }}{{ else }}?{{ end }}" style="width:{{$size}}px;height:{{$size}}px"></span>
+  <span class="ico ico--empty" data-initial="{{ if .Initial }}{{ .Initial }}{{ else }}?{{ end }}" style="width:{{$size}}px;height:{{$size}}px;{{ if not .Transparent }}background:{{$bg}};{{ end }}"></span>
 {{ end }}
 {{end}}

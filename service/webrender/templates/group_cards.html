@@ -1,6 +1,9 @@
 {{/* 单张卡片。数据：.（CardVM） .Group（GroupVM） */}}
-{{ define "card" }}
+{{define "card" }}
   {{ $style := .Group.CardStyle.Style }}
+  {{/* 原版实测：所有卡片容器背景统一为 rgba(42,42,42,0.42)，
+     即 #2a2a2a6b（DefaultIconBg）。卡片内的"彩色"来自图标图片本身，
+     图标方块背景为 transparent。文字统一白色。 */}}
   {{ if eq $style 2 }}
     {{/* ---------- 大卡：宽横卡，带状态指标 ---------- */}}
     <a class="card card--large{{ if eq .CardType 2 }} card--docker{{ end }}"
@@ -15,7 +18,7 @@
        {{ if .WidgetType }}data-widget="{{ .WidgetType }}"{{ end }}
        title="{{ .Description }}">
       <span class="card-ico-wrap">
-        {{ template "icon" (dict "Icon" .Icon "Size" 52 "Initial" .Initial) }}
+        {{ template "icon" (dict "Icon" .Icon "Size" 50 "Initial" .Initial "Transparent" true) }}
         {{ if eq .CardType 2 }}{{ template "dockerdot" .ContainerState }}{{ end }}
       </span>
       <span class="card-body">
@@ -38,6 +41,7 @@
     </a>
   {{ else if eq $style 0 }}
     {{/* ---------- 详情模式：横向卡片 ---------- */}}
+    {{/* 原版：卡片背景统一半透明深色；内部图标方块 50px、背景透明 */}}
     <a class="card card--detail{{ if eq .CardType 2 }} card--docker{{ end }}"
        href="{{ .OpenUrl }}"
        {{ if eq .OpenMethod 2 }}target="_blank" rel="noopener"{{ end }}
@@ -50,7 +54,7 @@
        {{ if .WidgetType }}data-widget="{{ .WidgetType }}"{{ end }}
        title="{{ .Description }}">
       <span class="card-ico-wrap">
-        {{ template "icon" (dict "Icon" .Icon "Size" 46 "Initial" .Initial) }}
+        {{ template "icon" (dict "Icon" .Icon "Size" 50 "Initial" .Initial "Transparent" true) }}
       </span>
       <span class="card-body">
         <span class="card-title">{{ .Title }}</span>
@@ -79,6 +83,7 @@ CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .Containe
     </a>
   {{ else }}
     {{/* ---------- 图标模式：方形图标 + 下方标题 ---------- */}}
+    {{/* 原版：70px 图标方块，背景统一半透明深色；标题白色带投影 */}}
     <a class="card card--icon{{ if eq .CardType 2 }} card--docker{{ end }}"
        href="{{ .OpenUrl }}"
        {{ if eq .OpenMethod 2 }}target="_blank" rel="noopener"{{ end }}
@@ -91,7 +96,7 @@ CPU:{{ printf "%.1f" .ContainerState.CPUPercent }}% RAM:{{ formatBytes .Containe
        {{ if .WidgetType }}data-widget="{{ .WidgetType }}"{{ end }}
        title="{{ .Description }}">
       <span class="card-ico-wrap">
-        {{ template "icon" (dict "Icon" .Icon "Size" 76 "Initial" .Initial) }}
+        {{ template "icon" (dict "Icon" .Icon "Size" 70 "Initial" .Initial) }}
         {{ if eq .CardType 2 }}
           {{ template "dockerdot" .ContainerState }}
         {{ end }}

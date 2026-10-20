@@ -7,11 +7,17 @@
   --line: #2e333b;
   --accent: #4ec9a7;
   --accent-2: #3aa88a;
-  --radius: 14px;
+  /* 与原版 rounded-2xl 对齐 */
+  --radius: 16px;
   --radius-sm: 8px;
   --shadow: 0 2px 12px rgba(0, 0, 0, .28);
-  --shadow-hover: 0 8px 26px rgba(0, 0, 0, .45);
-  --card-bg: rgba(16, 17, 21, .58);
+  --shadow-hover: 0 0 20px 10px rgba(0, 0, 0, .2);
+  /* 原版图标/卡片默认背景：半透明深色 */
+  --card-bg: #2a2a2a6b;
+  /* 原版卡片文字投影 */
+  --text-shadow: 2px 2px 5px rgb(0, 0, 0);
+  /* 卡片文字色（原版所有卡片文字为白色） */
+  --card-fg: #ffffff;
 }
 
 
@@ -25,33 +31,24 @@ html[data-theme="light"] {
   --line: #d9dee5;
   --accent: #2f9e7f;
   --accent-2: #24866b;
-  --card-bg: rgba(255, 255, 255, .72);
+  --card-bg: #2a2a2a6b;
   --shadow: 0 2px 10px rgba(0, 0, 0, .07);
-  --shadow-hover: 0 8px 24px rgba(0, 0, 0, .13);
+  --shadow-hover: 0 0 20px 10px rgba(0, 0, 0, .2);
 }
 html[data-theme="light"] .bg-layer { background-color: #eef1f5; }
 html[data-theme="light"] .bg-mask { background: rgba(255,255,255,.35) !important; }
 
-/* 亮色下卡片与文字颜色 */
-html[data-theme="light"] .card--detail,
-html[data-theme="light"] .card--icon .card-title,
+/* 亮色下的文字与控件配色。
+   卡片保持原版的半透明深色底 + 白字（不随主题反转），
+   因为卡片是浮在壁纸之上的玻璃层。 */
 html[data-theme="light"] .group-title,
-html[data-theme="light"] .clock-time,
 html[data-theme="light"] .page-title,
 html[data-theme="light"] .bm-title,
 html[data-theme="light"] .note-title {
   color: var(--text);
 }
-html[data-theme="light"] .card--detail .card-title { color: var(--text); }
-html[data-theme="light"] .card-desc,
-html[data-theme="light"] .card-metrics { color: var(--text-dim); }
 html[data-theme="light"] .hero-clock { color: #1d2126; text-shadow: none; }
-html[data-theme="light"] .card--icon .card-title { text-shadow: none; }
 html[data-theme="light"] .group-title { text-shadow: none; }
-html[data-theme="light"] .card--detail {
-  border-color: rgba(0, 0, 0, .06);
-}
-html[data-theme="light"] .card--detail:hover { background: rgba(255,255,255,.92); }
 html[data-theme="light"] .corner-bar .sort-toggle,
 html[data-theme="light"] .corner-bar .user-btn,
 html[data-theme="light"] .corner-bar .netmode {
@@ -189,14 +186,15 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
   padding: 46px 0 22px;
   color: #fff;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, .35);
+  text-shadow: var(--text-shadow);
 }
+/* 原版桌面 30px（text-3xl），窄屏 24px（text-2xl） */
 .clock-time {
-  font-size: 56px;
+  font-size: 30px;
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 .clock-date {
   margin-top: 6px;
@@ -205,18 +203,21 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ---------- 搜索框 ---------- */
+/* 原版宽度为容器 80%（lg），高度 46px */
 .hero-search {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: min(680px, 100%);
-  margin: 0 auto 34px;
+  width: min(755px, 100%);
+  margin: 20px auto 0;
   padding: 12px 20px;
   border: 1px solid;
   border-radius: 30px;
   backdrop-filter: blur(10px);
+  background: var(--card-bg);
 }
 .hero-search-icon { font-size: 17px; opacity: .8; color: #fff; }
+.flex > .hero-search { margin-bottom: 0; }
 .hero-search input {
   flex: 1; min-width: 0;
   background: transparent;
@@ -246,15 +247,18 @@ a { color: inherit; text-decoration: none; }
 /* ---------- 分组 ---------- */
 .panel { position: relative; }
 
-.group { margin-bottom: 30px; }
+/* 原版：分组之间 50px 间距 */
+.group { margin-bottom: 50px; }
+/* 原版：20px / 800，标题下边距 20px */
 .group-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 14px;
-  font-size: 15px;
-  font-weight: 600;
-  text-shadow: 0 1px 10px rgba(0, 0, 0, .4);
+  margin: 0 0 20px 10px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: var(--text-shadow);
 }
 .group-icon { font-size: 18px; opacity: .9; }
 .group-count {
@@ -269,34 +273,38 @@ a { color: inherit; text-decoration: none; }
 .group:hover .group-actions { display: inline-flex; }
 
 /* ---------- 网格 ---------- */
-.grid { display: grid; gap: 14px; }
+/* 对齐原版线上实测：
+   详情容器 minmax(200px,1fr) —— 708px→3列、1170px→5列
+   图标容器 minmax(80px,1fr)  —— 708px→7列、1170px→12列
+   gap 统一 18px */
+.grid { display: grid; gap: 18px; }
 .grid--detail {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
 }
 .grid--icon {
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  gap: 16px 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(80px, 100%), 1fr));
+  gap: 18px;
 }
 
 /* ---------- 卡片：详情（横卡） ---------- */
+/* 背景由模板内联给出（每卡自身颜色），这里只兜底 */
 .card--detail {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  min-height: 72px;
-  padding: 10px 13px;
+  /* 原版实测：height 70px、padding 0、无边框 */
+  height: 70px;
+  box-sizing: border-box;
+  padding: 0;
+  overflow: hidden;
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, .07);
   border-radius: var(--radius);
-  backdrop-filter: blur(8px);
-  transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  color: var(--card-fg, #fff);
+  transition: all .3s cubic-bezier(.4, 0, .2, 1);
 }
 .card--detail:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
-  background: rgba(22, 24, 29, .74);
+  backdrop-filter: blur(10px);
 }
 
 /* ---------- 卡片：图标（方卡） ---------- */
@@ -307,15 +315,16 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   gap: 8px;
   padding: 4px 2px 0;
+  color: var(--card-fg, #fff);
   transition: transform .16s ease;
 }
 .card--icon:hover { transform: translateY(-3px); }
-.card--icon .ico { box-shadow: 0 4px 16px rgba(0, 0, 0, .28); }
+.card--icon .ico { box-shadow: 0 4px 16px rgba(0, 0, 0, .28); border-radius: var(--radius); }
 .card--icon .card-title {
   font-size: 12.5px;
-  color: #fff;
+  color: var(--card-fg, #fff);
   text-align: center;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, .55);
+  text-shadow: var(--text-shadow);
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -324,21 +333,31 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- 卡片公共 ---------- */
 .card-ico-wrap { position: relative; flex: none; display: flex; }
-.card-body { display: flex; flex-direction: column; min-width: 0; gap: 1px; flex: 1; }
+/* 文字容器：flex 自适应占满图标右侧剩余空间（图标 50px + 左右各 10px 内边距） */
+.card-body {
+  display: flex; flex-direction: column; justify-content: center;
+  min-width: 0; gap: 1px; flex: 1;
+  padding: 0 10px;
+}
 .card--detail .card-title {
   font-size: 13.5px;
-  font-weight: 550;
-  color: #fff;
+  font-weight: 600;
+  color: var(--card-fg, #fff);
+  text-shadow: var(--text-shadow);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .card-desc {
   font-size: 12px;
-  color: rgba(255, 255, 255, .62);
+  color: var(--card-fg, #fff);
+  text-shadow: var(--text-shadow);
+  opacity: .82;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .card-metrics {
   font-size: 11px;
-  color: rgba(255, 255, 255, .62);
+  color: var(--card-fg, #fff);
+  text-shadow: var(--text-shadow);
+  opacity: .82;
   font-variant-numeric: tabular-nums;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -348,7 +367,8 @@ a { color: inherit; text-decoration: none; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  /* 原版内层图标 rounded-xl = 12px */
+  border-radius: 12px;
   overflow: hidden;
   flex: none;
 }
@@ -587,21 +607,27 @@ body.sorting .card[data-card-id] > * { pointer-events: none; }
 .sortable-chosen { box-shadow: var(--shadow-hover); }
 
 /* ---------- 响应式 ---------- */
+/* 网格不设断点：原版线上实测 743px 与 1440px 都用同一组 minmax(200/80,1fr)，
+   列数由容器宽度自然决定（与 auto-fill 语义一致） */
+@media (max-width: 768px) {
+  .clock-time { font-size: 24px; }
+  .group { margin-bottom: 40px; }
+  .group-title { font-size: 18px; }
+  .hero-clock { padding: 30px 0 16px; }
+}
 @media (max-width: 720px) {
   /* 顶栏在小屏只保留内外网切换，排序按钮收起 */
   .corner-bar { gap: 5px; top: 8px; right: 8px; }
   .corner-bar .sort-toggle { display: none; }
   .netmode-btn { padding: 5px 8px; font-size: 11px; }
-  .clock-time { font-size: 40px; }
-  .hero-clock { padding: 30px 0 16px; }
-  .hero-search { margin-bottom: 26px; padding: 10px 16px; }
+  .hero-search { padding: 10px 16px; }
   .shell { padding: 16px 12px 110px; }
-  .grid--detail { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-  .grid--icon { grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 12px 8px; }
-  .card--detail { min-height: 62px; padding: 9px 10px; gap: 9px; }
-  /* 窄屏下指标允许换行，避免 "RAM:6..." 截断 */
-  .card-metrics { white-space: normal; line-height: 1.3; }
+  /* 窄屏下卡片改为自适应高度，避免两行文字被固定 70px 裁切 */
+  .card--detail { height: auto; min-height: 62px; }
   .card--detail .card-title { font-size: 13px; }
+}
+@media (max-width: 480px) {
+  .grid { gap: 12px; }
 }
 
 .htmx-indicator { opacity: 0; transition: opacity .2s ease; }
@@ -1189,8 +1215,8 @@ html[data-theme="light"] .card-widget--err { color: #c22b45; }
 
 /* ---------- 大卡：宽横卡 + 状态指标 ---------- */
 .grid--large {
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  gap: 18px;
 }
 .card--large {
   position: relative;
@@ -1201,15 +1227,13 @@ html[data-theme="light"] .card-widget--err { color: #c22b45; }
   padding: 14px 16px;
   min-height: 84px;
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, .07);
   border-radius: var(--radius);
-  backdrop-filter: blur(8px);
-  transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  backdrop-filter: blur(10px);
+  color: var(--card-fg, #fff);
+  transition: all .3s cubic-bezier(.4, 0, .2, 1);
 }
 .card--large:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
-  background: rgba(22, 24, 29, .74);
 }
 .card--large .card-body {
   gap: 3px;
