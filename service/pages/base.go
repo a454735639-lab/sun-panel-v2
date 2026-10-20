@@ -203,13 +203,43 @@ func loadUrlRules(userId uint) []models.UrlRule {
 	return rules
 }
 
-// pickUrl 按客户端网络环境选择打开地址。
+// pickerCtx 地址选择所需的上下文，**一次性算好**后在卡片循环里复用。
+//
+// 为什么需要它：pickUrl 原先在每张卡片的循环里被调用，
+// 而它内部会 currentUser（可能回落到数据库查 token）+ 查一次规则表，
+// 于是渲染 N 张卡片就产生 N 次多余的 SQL（N+1 查询），卡片多时面板明显变慢。
+// 把这两个查询提到循环外只做一次即可。
+type pickerCtx struct {
+	mode   string           // 显式网络模式 lan/wan/auto
+	rules  []models.UrlRule // 已按 sort 排好，可为空
+	useLan bool             // 内置 IP 判断的结果
+}
+
+// newPickerCtx 在进入卡片循环前调用一次。
+func newPickerCtx(c *gin.Context) pickerCtx {
+	p := pickerCtx{mode: netMode(c)}
+
+	// 内置 IP 判断（纯本地计算，无 IO）
+	clientIP := getClientIP(c)
+	global.ServerPublicIPMutex.RLock()
+	pubIP := global.ServerPublicIP
+	global.ServerPublicIPMutex.RUnlock()
+	p.useLan = isLanIP(clientIP) || isNatLoopback(clientIP, pubIP)
+
+	// 规则只查一次
+	if u, ok := currentUser(c); ok {
+		p.rules = loadUrlRules(u.ID)
+	}
+	return p
+}
+
+// pick 用预取好的上下文为单个站点选地址。
 //
 // 优先级：
 //  1. 显式网络模式（lan/wan）—— 用户手动切换，最高优先
 //  2. 地址规则匹配 —— 逐条匹配，命中即用
 //  3. 内置 IP 判断 —— 无规则命中时的兜底，保持与改造前一致
-func pickUrl(c *gin.Context, wan, lan string) string {
+func (p pickerCtx) pick(wan, lan string) string {
 	wan = strings.TrimSpace(wan)
 	lan = strings.TrimSpace(lan)
 	if lan == "" {
@@ -219,7 +249,7 @@ func pickUrl(c *gin.Context, wan, lan string) string {
 		return lan
 	}
 
-	switch netMode(c) {
+	switch p.mode {
 	case "lan":
 		return lan
 	case "wan":
@@ -228,25 +258,27 @@ func pickUrl(c *gin.Context, wan, lan string) string {
 
 	// 地址规则：对内外网两个地址都尝试匹配
 	// （用户写的 pattern 可能针对内网域名，也可能针对外网域名）
-	if user, ok := currentUser(c); ok {
-		if rules := loadUrlRules(user.ID); len(rules) > 0 {
-			if t, hit := models.PickUrlByRules(rules, lan); hit {
-				return t
-			}
-			if t, hit := models.PickUrlByRules(rules, wan); hit {
-				return t
-			}
+	if len(p.rules) > 0 {
+		if t, hit := models.PickUrlByRules(p.rules, lan); hit {
+			return t
+		}
+		if t, hit := models.PickUrlByRules(p.rules, wan); hit {
+			return t
 		}
 	}
 
-	clientIP := getClientIP(c)
-	global.ServerPublicIPMutex.RLock()
-	pubIP := global.ServerPublicIP
-	global.ServerPublicIPMutex.RUnlock()
-	if isLanIP(clientIP) || isNatLoopback(clientIP, pubIP) {
+	if p.useLan {
 		return lan
 	}
 	return wan
+}
+
+// pickUrl 单次选择地址。
+//
+// 仅供不在循环中的调用点使用（如搜索结果只处理少量条目）。
+// 渲染卡片列表请改用 newPickerCtx + pickerCtx.pick，避免 N+1 查询。
+func pickUrl(c *gin.Context, wan, lan string) string {
+	return newPickerCtx(c).pick(wan, lan)
 }
 
 // ---- 数据加载 ----
@@ -270,6 +302,9 @@ func loadGroups(c *gin.Context, userId uint) ([]GroupVM, error) {
 	if global.Db == nil {
 		return nil, nil
 	}
+	// 在循环外一次性算好地址选择上下文，避免每张卡片重复查库（N+1）
+	pk := newPickerCtx(c)
+
 	var groups []models.ItemIconGroup
 	if err := global.Db.Where("user_id = ?", userId).
 		Order("sort asc, id asc").Find(&groups).Error; err != nil {
@@ -290,7 +325,7 @@ func loadGroups(c *gin.Context, userId uint) ([]GroupVM, error) {
 			Description: it.Description,
 			WanUrl:      it.Url,
 			LanUrl:      it.LanUrl,
-			OpenUrl:     pickUrl(c, it.Url, it.LanUrl),
+			OpenUrl:     pk.pick(it.Url, it.LanUrl),
 			OpenMethod:  it.OpenMethod,
 			CardType:    it.CardType,
 			WidgetType:  it.WidgetType,

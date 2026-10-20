@@ -26,7 +26,7 @@ type ItemIcon struct {
 	// WidgetType 服务状态小组件类型
 	WidgetType   string `gorm:"type:varchar(32);default:''" json:"widgetType"`
 	WidgetConfig string `gorm:"type:varchar(1000)" json:"widgetConfig"`
-	UserId          uint                      `json:"userId"`
+	UserId          uint                      `gorm:"index" json:"userId"`
 	User            User                      `json:"user"`
 }
 

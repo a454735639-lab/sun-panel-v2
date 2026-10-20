@@ -48,12 +48,14 @@ func Search(c *gin.Context) {
 		var cards []models.ItemIcon
 		global.Db.Where("user_id = ? AND (title LIKE ? OR description LIKE ? OR url LIKE ?)", user.ID, like, like, like).
 			Limit(60).Find(&cards)
+		// 循环外预取一次，避免逐条重复查库（最多 60 条，N+1 明显）
+		pk := newPickerCtx(c)
 		for i := range cards {
 			it := cards[i]
 			unmarshalIcon(it.IconJson, &it)
 			h := SearchHit{
 				Kind: "card", ID: it.ID, Title: it.Title, Description: it.Description,
-				Url: pickUrl(c, it.Url, it.LanUrl),
+				Url: pk.pick(it.Url, it.LanUrl),
 			}
 			h.Icon.Icon = it.Icon
 			hits = append(hits, h)
