@@ -34,11 +34,6 @@ const apps = ref<App[]>([
     icon: 'material-symbols-person-edit-outline-rounded',
   },
   {
-    name: t('apps.baseSettings.appName'),
-    componentName: 'Style',
-    icon: 'ion-color-palette-outline',
-  },
-  {
     name: t('apps.itemGroupManage.appName'),
     componentName: 'ItemGroupManage',
     icon: 'material-symbols-ad-group-outline-rounded',
@@ -61,8 +56,11 @@ const apps = ref<App[]>([
     icon: 'icon-park-outline-import-and-export',
   },
   {
-    name: t('apps.settings.appName'),
-    componentName: 'Settings',
+    // 全局设置：原先「风格设置」与「设置」两项并列，
+    // 都是"改整块面板"的配置，分成两项后用户每次要先猜在哪一栏。
+    // 合并为一页，内部用页签按对象分组（外观/网络/规则/诊断/导入）。
+    name: t('apps.globalSettings.appName'),
+    componentName: 'GlobalSettings',
     icon: 'set',
     auth: 1, // 只有管理员可见
   },
@@ -123,9 +121,12 @@ onMounted(() => {
     icon: 'lucide-users',
     auth: 1,
   }
-  // 初始化 - 将账号管理插入到Settings之前(索引5)
-  if (authStore.userInfo?.role === 1)
-    apps.value.splice(5, 0, adminApp)
+  // 账号管理插到「全局设置」之前 ——
+  // 用查找定位而非写死索引：菜单项会增删，写死索引迟早插错位置。
+  if (authStore.userInfo?.role === 1) {
+    const idx = apps.value.findIndex(a => a.componentName === 'GlobalSettings')
+    apps.value.splice(idx < 0 ? apps.value.length : idx, 0, adminApp)
+  }
 
   window.addEventListener('resize', handleResize)
   handleResize()

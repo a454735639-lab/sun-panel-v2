@@ -112,8 +112,10 @@ function resetPanelConfig() {
 </script>
 
 <template>
-  <div class="bg-slate-200 dark:bg-zinc-900 rounded-[10px] p-[8px] overflow-auto">
-    <NCard style="border-radius:10px" size="small">
+  <!-- 外层留白与背景由 GlobalSettings 统一提供，这里只放内容，
+       避免双层 padding 让内容区显得过窄。 -->
+  <div>
+    <NCard style="border-radius:10px" class="mt-[10px]" size="small">
       <div class="text-slate-500 mb-[5px] font-bold">
         LOGO
       </div>

@@ -95,6 +95,16 @@
       "newVersion": "新版本",
       "goToUpdate": "去更新"
     },
+    "globalSettings": {
+      "appName": "全局设置",
+      "title": "全局设置",
+      "desc": "原「风格设置」与「设置」已合并到这里，按类型分页。",
+      "tabAppearance": "外观",
+      "tabNetwork": "网络",
+      "tabRules": "地址规则",
+      "tabDiagnostics": "诊断日志",
+      "tabScan": "扫描导入"
+    },
     "baseSettings": {
       "appName": "风格设置",
       "bottomMargin": "下边距",

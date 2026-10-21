@@ -91,6 +91,16 @@
       "issue": "Feedback:",
       "viewUpdateLog": "Click here to view update log"
     },
+    "globalSettings": {
+      "appName": "Global Settings",
+      "title": "Global Settings",
+      "desc": "“Style” and “Settings” are now merged here, grouped by type.",
+      "tabAppearance": "Appearance",
+      "tabNetwork": "Network",
+      "tabRules": "URL Rules",
+      "tabDiagnostics": "Diagnostics",
+      "tabScan": "Scan Import"
+    },
     "baseSettings": {
       "appName": "Style Settings",
       "bottomMargin": "Bottom margin",

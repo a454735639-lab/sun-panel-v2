@@ -103,7 +103,7 @@ function doClear() {
 </script>
 
 <template>
-  <NCard style="border-radius:10px; margin-top:8px" size="small">
+  <NCard style="border-radius:10px" class="mt-[10px]" size="small">
     <div class="flex items-center justify-between mb-[8px] flex-wrap gap-2">
       <div class="text-slate-500 font-bold text-base">
         诊断日志
