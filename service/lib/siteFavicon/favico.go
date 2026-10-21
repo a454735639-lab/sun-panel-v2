@@ -26,6 +26,59 @@ func IsHTTPURL(url string) bool {
 	return match
 }
 
+// FallbackFaviconURLs 返回一串"按顺序尝试"的第三方 favicon 服务地址。
+//
+// 为什么需要多个而不是只用 Google：`https://www.google.com/s2/favicons`
+// 在中国大陆网络下不可达（实测连接超时 8s），而这恰恰是本项目的主要使用场景。
+// 原先失败后一路回退到 Google，结果就是"图标加载不出来"——
+// 且因为回退本身也失败，界面上看不出是哪一步挂了。
+//
+// 这里优先用大陆可达的服务，Google 放在最后（海外部署时仍能兜底）。
+//
+// 注意：调用方**不能**对这些 URL 去除查询参数 ——
+// 域名是通过 ?domain= 传的，剥掉参数就变成请求服务首页，拿不到目标图标。
+func FallbackFaviconURLs(domain string) []string {
+	d := strings.TrimSpace(domain)
+	if d == "" {
+		return nil
+	}
+	// 去掉端口，favicon 服务一般不接受 host:port 形式
+	if i := strings.LastIndex(d, ":"); i > 0 && !strings.Contains(d[i:], "]") {
+		d = d[:i]
+	}
+	return []string{
+		fmt.Sprintf("https://favicon.im/%s?larger=true", d),
+		fmt.Sprintf("https://favicon.zhusl.com/ico?url=%s", d),
+		fmt.Sprintf("https://toolb.cn/favicon/%s", d),
+		fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=64", d),
+	}
+}
+
+// StripQuery 去掉 URL 的查询串，但保留第三方 favicon 服务的参数。
+//
+// 原实现无条件剥掉全部 get 参数，本意是"有些图标服务器不支持带参请求"，
+// 但副作用是把 Google/其他服务的 domain 参数也剥了 ——
+// 变成请求 `https://www.google.com/s2/favicons`（无参数），
+// 拿到的是 Google 自己的图标而非目标网站，等于回退失效。
+func StripQuery(rawURL string) string {
+	p, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	// 这些服务的查询串是语义的一部分，必须保留
+	if strings.Contains(p.Host, "google.com") ||
+		strings.Contains(p.Host, "favicon.im") ||
+		strings.Contains(p.Host, "zhusl.com") ||
+		strings.Contains(p.Host, "toolb.cn") {
+		return rawURL
+	}
+	if p.RawQuery == "" {
+		return rawURL
+	}
+	p.RawQuery = ""
+	return p.String()
+}
+
 func GetOneFaviconURL(urlStr string) (string, error) {
 	iconURLs, err := getFaviconURL(urlStr)
 	if err != nil {

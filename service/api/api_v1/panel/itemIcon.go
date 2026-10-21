@@ -240,8 +240,19 @@ func getImageBase64(imageUrl string) (string, error) {
 
 	// 获取Content-Type
 	contentType := resp.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "image/png" // 默认使用PNG
+
+	// 必须确认拿到的是图片。
+	// 很多站点对任意路径都返回 200 + HTML（SPA 兜底路由 / CDN），
+	// 于是 `GET /favicon.ico` 会"成功"返回 HTML 页面。
+	// 不校验就会把 HTML 塞进 icon_json，前端 <img> 必然破图，
+	// 而后端一切显示正常 —— 典型的"静默失败"。
+	if !strings.HasPrefix(contentType, "image/") {
+		head := buffer.Bytes()
+		if len(head) > 256 {
+			head = head[:256]
+		}
+		return "", fmt.Errorf("not an image: content-type=%q body-preview=%q",
+			contentType, string(head))
 	}
 
 	// 转换为base64
@@ -273,13 +284,29 @@ func (a *ItemIcon) GetSiteFavicon(c *gin.Context) {
 	// 1. 首先尝试从网站本身获取favicon
 	iconUrl, err := siteFavicon.GetOneFaviconURL(req.Url)
 	if err != nil {
-		// 2. 如果失败，使用谷歌的favicon服务作为回退
-		global.Logger.Debug("Failed to get favicon from site, trying Google API:", err)
+		// 2. 网站本身取不到（常见于：需要登录、反爬、SPA、根本没放 favicon）
+		//    改用第三方服务 —— 但**不能只用 Google**：
+		//    google.com 在中国大陆不可达，回退到它等于没回退。
+		//    按"大陆可用优先、Google 兜底"的顺序逐个试。
+		global.Logger.Debug("Failed to get favicon from site, trying fallback services:", err)
 
-		// 使用谷歌的favicon服务作为回退
-		domain := parsedURL.Host
-		fullUrl = fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=64", domain)
-		global.Logger.Debug("Using Google favicon service for domain:", domain)
+		var lastErr error
+		for _, fb := range siteFavicon.FallbackFaviconURLs(parsedURL.Host) {
+			b64, e := getImageBase64(fb)
+			if e == nil && b64 != "" {
+				resp.IconUrl = b64
+				apiReturn.SuccessData(c, resp)
+				return
+			}
+			lastErr = e
+			global.Logger.Debug("Fallback favicon service failed:", fb, e)
+		}
+		msg := "acquisition failed"
+		if lastErr != nil {
+			msg += ": " + lastErr.Error()
+		}
+		apiReturn.Error(c, msg)
+		return
 	} else {
 		// 处理获取到的favicon URL
 		if strings.HasPrefix(iconUrl, "//") {
@@ -311,22 +338,31 @@ func (a *ItemIcon) GetSiteFavicon(c *gin.Context) {
 		}
 	}
 
-	// 移除URL中的查询参数，因为有些图标服务器不支持
-	if strings.Contains(fullUrl, "?") {
-		fullUrl = strings.Split(fullUrl, "?")[0]
-		global.Logger.Debug("Removed query params, final URL:", fullUrl)
-	}
+	// 去掉无意义的查询参数（有些图标服务器对带参请求返回 403），
+	// 但第三方 favicon 服务的 domain 参数是语义的一部分，必须保留 ——
+	// 一律剥掉会把回退变成 "请求服务首页"，拿不到目标图标。
+	fullUrl = siteFavicon.StripQuery(fullUrl)
 
 	// 获取base64格式的图标
 	base64Icon, getErr := getImageBase64(fullUrl)
 	if getErr != nil {
-		// 如果获取失败，使用谷歌的favicon服务作为最终回退
-		global.Logger.Debug("Failed to get favicon from URL, trying Google API as final fallback:", getErr)
-		domain := parsedURL.Host
-		googleUrl := fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=64", domain)
-		base64Icon, getErr = getImageBase64(googleUrl)
+		// 网站上找到了 favicon 地址，但下载失败（403/防盗链/超时）。
+		// 逐个尝试第三方服务，不再只押注 Google。
+		global.Logger.Debug("Failed to download favicon from site, trying fallback services:", getErr)
+
+		var lastErr error = getErr
+		for _, fb := range siteFavicon.FallbackFaviconURLs(parsedURL.Host) {
+			b64, e := getImageBase64(fb)
+			if e == nil && b64 != "" {
+				base64Icon = b64
+				getErr = nil
+				break
+			}
+			lastErr = e
+			global.Logger.Debug("Fallback favicon service failed:", fb, e)
+		}
 		if getErr != nil {
-			apiReturn.Error(c, "acquisition failed:"+getErr.Error())
+			apiReturn.Error(c, "acquisition failed:"+lastErr.Error())
 			return
 		}
 	}
