@@ -30,12 +30,31 @@ let timer: ReturnType<typeof setInterval> | null = null
 let currentIds: string[] = []
 let visibleHandler: (() => void) | null = null
 
+/**
+ * Docker 是否可用（后端明确告知，而非前端猜测）。
+ *
+ * 为什么需要它：未挂载 docker.sock 时接口会稳定返回空列表，
+ * 前端若只看"有没有数据"，无法区分
+ *   「Docker 正常但确实没容器」 vs 「根本读不到 Docker」。
+ * 前者显示 0/N 是对的，后者会永远停在"状态获取中"——
+ * 用户以为再等等就有，实际永远不会。
+ *
+ * 后端在 data.dockerReady 里直接给出结论（见 pages/docker_states.go）。
+ * undefined 表示"还没收到过响应"。
+ */
+const dockerReady = ref<boolean | undefined>(undefined)
+
 const POLL_MS = 5000
 
 async function poll() {
   if (!currentIds.length) return
   try {
     const res = await getContainerStates(currentIds, true)
+    // 后端明确告知 Docker 是否可用，优先采用它
+    const ready = res?.data?.dockerReady
+    if (typeof ready === 'boolean')
+      dockerReady.value = ready
+
     const list = res?.data?.list
     if (Array.isArray(list)) {
       const map: Record<string, ContainerState> = {}
@@ -94,6 +113,8 @@ export function setWatchedContainers(ids: string[]) {
 
   stop()
   currentIds = uniq
+  // 换了监控目标就重置可用性判断，等新一轮响应重新确认
+  dockerReady.value = undefined
   // 清掉已不再监控的容器，避免显示过期状态
   if (uniq.length) {
     const kept: Record<string, ContainerState> = {}
@@ -137,5 +158,33 @@ export function useDockerStates() {
     polling: computed(() => polling.value),
     /** 取某个容器的状态，未监控或未取到则为 undefined */
     stateOf: (id: string) => states.value[id],
+    /**
+     * 汇总：运行中数量 / 监控总数 / 已拿到状态的容器列表。
+     *
+     * 供顶部横幅显示「N / M 个容器运行中」——
+     * 原作者 SSR 版有这条横幅（见 webrender/templates/panel.html 的
+     * docker-banner），Vue 版原先只有每张卡片的小圆点，
+     * 用户要一个个数才知道整体情况。
+     *
+     * 注意 running 只统计"确实拿到状态且 running=true"的容器：
+     * 状态还没回来时不该把未监控的算成已停止。
+     */
+    summary: computed(() => {
+      const list = Object.values(states.value)
+      return {
+        total: currentIds.length,
+        sampled: list.length,
+        running: list.filter(s => s.running).length,
+        /**
+         * Docker 不可用（未挂载 docker.sock）。
+         *
+         * 依据后端的明确信号，而不是"轮询了几次还没数据"这类猜测 ——
+         * 猜测会把"启动慢"误判成"不可用"，也会把"确实没容器"误判成"读取中"。
+         */
+        unavailable: dockerReady.value === false,
+        /** 正在获取中：有目标但还没收到任何响应 */
+        loading: dockerReady.value === undefined && list.length === 0,
+      }
+    }),
   }
 }

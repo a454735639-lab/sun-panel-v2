@@ -408,6 +408,9 @@
     "welcomeMessage": "Welcome back!"
   },
   "panelHome": {
+    "containersUnavailable": "Container status unavailable (docker.sock not mounted?)",
+    "containersRunning": "containers running",
+    "containersLoading": "(fetching status\u2026)",
     "changeToLanModel": "Switch to LAN mode",
     "changeToLanModelSuccess": "Switched to LAN mode (mode status saved locally)",
     "changeToWanModel": "Switch to WAN mode",

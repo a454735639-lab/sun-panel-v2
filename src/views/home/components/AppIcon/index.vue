@@ -83,14 +83,31 @@ const containerState = computed(() => {
   return stateOf(containerId.value)
 })
 
-// 状态点颜色：运行中=绿、已停止/退出=红、其它（创建中/重启中）=黄
+// 状态点颜色。
+//
+// 沿用原作者 SSR 版的语义（见 webrender/static/app.css 的 .docker-dot--*）：
+//   running   绿 + 脉冲动画   —— 运行中
+//   restarting/paused 黄      —— 过渡态，值得注意
+//   exited    灰             —— 正常停止（不是错误）
+//   dead      红             —— 异常死亡
+//   created/unknown 深灰      —— 未知
+//
+// 早先只分「running / stopped / pending」三类，把 exited（正常停止）
+// 和 dead（异常）都涂成红色，用户看不出"停得正常"还是"崩了"。
 const stateClass = computed(() => {
   const st = containerState.value
-  if (!st) return 'unknown'
-  if (st.running) return 'running'
+  if (!st)
+    return 'unknown'
+  if (st.running)
+    return 'running'
   const s = (st.state || '').toLowerCase()
-  if (s === 'exited' || s === 'dead') return 'stopped'
-  return 'pending'
+  if (s === 'dead')
+    return 'dead'
+  if (s === 'exited')
+    return 'exited'
+  if (s === 'restarting' || s === 'paused')
+    return 'pending'
+  return 'created'
 })
 
 function fmtBytes(v?: number) {
@@ -286,9 +303,12 @@ interface DockerStateLike {
 }
 
 /* ---------- Docker 容器状态点 ----------
-   绿=运行中，红=已停止/退出，黄=过渡态（创建中/重启中），灰=状态未知。
-   用 absolute 定位在卡片右上角，不参与布局，因此不会挤压标题与描述。
-   加白色描边是为了在深浅色卡片背景上都能看清。 */
+ * 语义与原作者 SSR 版一致：
+ *   绿(脉冲)=运行中，红=异常死亡(dead)，灰=正常停止(exited)，
+ *   黄=过渡态(restarting/paused)，深灰=未知/创建中。
+ * 用 absolute 定位在卡片右上角，不参与布局，因此不会挤压标题与描述。
+ * 加白色描边是为了在深浅色卡片背景上都能看清。
+ */
 .docker-dot {
   position: absolute;
   top: 6px;
@@ -302,12 +322,21 @@ interface DockerStateLike {
 }
 .docker-dot--running {
   background: #22c55e;
-  /* 运行中加一圈柔和光晕，让"在线"更醒目 */
+  /* 运行中加一圈柔和光晕 + 脉冲 —— 静止的小绿点很难在壁纸上被注意到，
+     轻微呼吸感能让"哪些在跑"一眼可见。 */
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.55), 0 0 6px rgba(34, 197, 94, 0.8);
+  animation: docker-pulse 2s ease-in-out infinite;
 }
-.docker-dot--stopped { background: #ef4444; }
-.docker-dot--pending { background: #eab308; }
+.docker-dot--dead { background: #ef4444; }
+.docker-dot--exited { background: #8a8a8a; }
+.docker-dot--pending { background: #f59e0b; }
+.docker-dot--created { background: #6b7280; }
 .docker-dot--unknown { background: #9ca3af; }
+
+@keyframes docker-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
 
 /* 容器指标：小字、半透明，避免与标题争夺注意力。
    .app-icon-metrics 是两种卡片样式共用的标记类，

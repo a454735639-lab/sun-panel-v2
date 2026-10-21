@@ -127,7 +127,15 @@ function http<T = any>(
 
   beforeRequest?.()
 
-  method = method || 'GET'
+  // 归一化 HTTP 方法。
+  //
+  // 必须做这一步：下面用 `method === 'GET'` 决定走 get 还是 post 出口，
+  // 而调用方写 'get'（小写）时匹配不上，会被**静默当成 POST** ——
+  // 对 GET 路由就是 404，且错误信息里看不出方法错了。
+  // 实测踩过：/widget/types 就是这么 404 的（诊断日志显示
+  // 「POST /widget/types → HTTP 404」）。
+  // 统一转大写，让大小写写法不再影响行为。
+  method = (method || 'GET').toUpperCase()
 
   const params = Object.assign(typeof data === 'function' ? data() : data ?? {}, {})
   if (!headers)

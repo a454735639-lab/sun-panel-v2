@@ -417,6 +417,9 @@
     "welcomeMessage": "欢迎回来！"
   },
   "panelHome": {
+    "containersUnavailable": "无法获取容器状态（未挂载 docker.sock？）",
+    "containersRunning": "个容器运行中",
+    "containersLoading": "（状态获取中…）",
     "changeToLanModel": "切换为私密模式",
     "changeToLanModelSuccess": "已经切换到私密模式（模式状态仅保存在本地）",
     "changeToWanModel": "切换为公网模式",

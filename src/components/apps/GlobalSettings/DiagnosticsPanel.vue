@@ -22,7 +22,7 @@
  * 4. 提供「复现」引导
  *    日志为空时提示用户先去复现问题，而不是让页面空着。
  */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { NButton, NCard, NEmpty, NSpace, NTag, NAlert, useMessage } from 'naive-ui'
 import {
   clearLogs, exportAsText, getLogs, subscribeLogs,
@@ -32,6 +32,8 @@ import {
 const message = useMessage()
 const logs = ref<ErrorLogItem[]>([])
 const showRaw = ref(false)
+// 复制失败时展示的全文文本框。需要它才能"展开即选中"。
+const rawTextarea = ref<HTMLTextAreaElement | null>(null)
 
 function refresh() {
   // 复制一份，避免视图直接引用内部数组（清空时会让列表失去响应）
@@ -71,28 +73,73 @@ function kindType(k: ErrorLogItem['kind']) {
 
 async function copyAll() {
   const text = rawText.value
-  try {
-    // 优先用剪贴板 API（需要 https 或 localhost）；
-    // 内网 http 环境下它不可用，回退到 execCommand。
-    if (navigator.clipboard && window.isSecureContext) {
+
+  // 优先用剪贴板 API（需要 https 或 localhost——即 isSecureContext）。
+  //
+  // 注意：内网 http 环境下 navigator.clipboard 通常**存在但被拒**，
+  // 所以不能只判断"有没有这个对象"，必须真的 await 并捕获异常。
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
       await navigator.clipboard.writeText(text)
+      // 复制成功要把上次失败时展开的兜底面板收起来 ——
+      // 否则用户会看到"已复制"的同时还挂着一块"请手动复制"，
+      // 自相矛盾。
+      showRaw.value = false
+      message.success(`已复制 ${logs.value.length} 条日志，粘贴到对话里即可`)
+      return
     }
-    else {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
+    catch {
+      // 落到下面的 execCommand 兜底
     }
+  }
+
+  // 兜底：execCommand('copy')。
+  //
+  // ★ 关键：它**失败时返回 false 而不抛异常** ——
+  // 早先这里没有检查返回值，无论成功失败都提示"已复制"，
+  // 用户看到成功的提示、粘贴出来却是空的（这正是本次反馈的问题）。
+  // 必须显式判定返回值，失败时走降级路径。
+  let ok = false
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.top = '0'
+    ta.style.left = '0'
+    ta.style.opacity = '0'
+    // 只读可避免移动端弹键盘
+    ta.setAttribute('readonly', '')
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    // iOS Safari 需要显式设置选区
+    ta.setSelectionRange(0, ta.value.length)
+    ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+  }
+  catch {
+    ok = false
+  }
+
+  if (ok) {
+    // 成功后收起兜底面板（理由同上：不能同时显示"已复制"和"请手动复制"）
+    showRaw.value = false
     message.success(`已复制 ${logs.value.length} 条日志，粘贴到对话里即可`)
   }
-  catch (e: any) {
-    // 复制失败时退化为展示全文，让用户手动全选
+  else {
+    // 复制失败：把全文展开并**自动全选**，用户直接 Ctrl+C 即可。
+    //
+    // 只展开不选中是不够的 —— 用户还得自己点进文本框、Ctrl+A、Ctrl+C，
+    // 在手机上尤其麻烦。既然已经知道"自动复制失败"，
+    // 就把能替他做的那一步做完。
     showRaw.value = true
-    message.warning('自动复制失败，已展开全文，请手动全选复制')
+    await nextTick()
+    const ta = rawTextarea.value
+    if (ta) {
+      ta.focus()
+      ta.select()
+    }
+    message.warning('浏览器拒绝了自动复制，已展开全文并选中，请按 Ctrl+C（或长按复制）')
   }
 }
 
@@ -178,12 +225,20 @@ function doClear() {
       </div>
     </div>
 
-    <!-- 复制失败时的兜底：展示纯文本供手动全选 -->
+    <!-- 复制失败时的兜底：展示纯文本供手动全选。
+         这条提示做成**页面内常驻**而不是只靠 toast ——
+         toast 会消失，而"复制没成功、请手动复制"是需要用户照做的指令，
+         错过就以为复制成功了（这正是用户反馈"一键复制没用"的体感来源）。 -->
     <div v-if="showRaw" class="mt-[10px]">
+      <NAlert type="warning" :bordered="false" class="mb-[8px]">
+        浏览器拒绝了自动复制（内网 http 环境下常见）。下方全文<strong>已自动选中</strong>，
+        直接按 <strong>Ctrl+C</strong>（手机上长按 → 复制）即可。
+      </NAlert>
       <div class="text-sm text-gray-600 mb-[6px]">
-        完整日志（请全选复制）：
+        完整日志：
       </div>
       <textarea
+        ref="rawTextarea"
         readonly
         class="w-full h-[240px] p-[8px] text-xs font-mono rounded-lg bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700"
         :value="rawText"

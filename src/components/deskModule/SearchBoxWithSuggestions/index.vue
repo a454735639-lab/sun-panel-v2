@@ -130,11 +130,17 @@ function convertServerTreeToFrontendTree(serverTree: any[]): TreeItem[] {
 
 // 构建书签树
 function buildBookmarkTree(bookmarks: any[]): TreeItem[] {
+  // 先剔除脏元素（缓存里可能混入 null/undefined），
+  // 否则下面过滤时读 b.isFolder 会抛 "reading 'isFolder'"。
+  const safe = (Array.isArray(bookmarks) ? bookmarks : []).filter(
+    b => b && typeof b === 'object',
+  )
+
   // 首先分离文件夹和书签
-  const folders = bookmarks.filter(b => {
+  const folders = safe.filter(b => {
     return (b.isFolder === 1 || (b.isFolder && typeof b.isFolder === 'boolean'));
   });
-  const items = bookmarks.filter(b => {
+  const items = safe.filter(b => {
     return (b.isFolder === 0 || (!b.isFolder && typeof b.isFolder === 'boolean'));
   });
 
@@ -154,19 +160,32 @@ function buildBookmarkTree(bookmarks: any[]): TreeItem[] {
       children: [],
       isLeaf: false
     };
-    // 使用id作为map的键
-    folderMap.set(folderId.toString(), folderNode);
+    // 键统一用字符串，避免 number/string 键不一致
+    folderMap.set(String(folderId), folderNode);
     // 同时也将文件夹名称作为键，以便处理嵌套关系
     folderMap.set(folderTitle, folderNode);
   });
 
-  // 将文件夹添加到其父文件夹中
-  folders.forEach(folder => {
-    const folderNode = folderMap.get(folder.id.toString())
+  // 将文件夹添加到其父文件夹中。
+  //
+  // ★ 统一用「key ?? id」的结果（folderId）取 map，不再读 folder.id ——
+  // 前端格式节点只有 key 没有 id，直接读会抛 reading 'id'。
+  // 与 home/index.vue 的 buildBookmarkTree 是同一份复制粘贴的代码，
+  // 两处都要修（否则搜索框仍会报同样的错）。
+  folders.forEach((folder) => {
+    const isFrontendFormat = folder.hasOwnProperty('key') && folder.hasOwnProperty('label')
+    const folderId = isFrontendFormat ? folder.key : folder.id
+    if (folderId === undefined || folderId === null)
+      return
+
+    const folderNode = folderMap.get(String(folderId))
+    if (!folderNode)
+      return
+
     // 检查是否有ParentUrl并且不是根节点(0)
     if (folder.ParentUrl && folder.ParentUrl !== '0' && folder.ParentUrl !== 0) {
       // 尝试用不同的方式查找父文件夹
-      let parentFolder = folderMap.get(folder.ParentUrl.toString())
+      let parentFolder = folderMap.get(String(folder.ParentUrl))
 
       if (!parentFolder) {
         // 如果找不到，尝试用文件夹标题匹配

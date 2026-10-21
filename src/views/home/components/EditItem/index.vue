@@ -34,6 +34,14 @@ const restoreDefault: Panel.Info = {
   lanOnly: 0,
 }
 
+// 表单数据。**必须在使用它的任何代码之前声明** ——
+// <script setup> 是顺序执行的，而 watch/computed 的 getter 会在注册时
+// 就被同步执行一次（watch 取初始值、computed 被模板求值）。
+// 早先 model 声明在下面的 watch 之后，导致打开卡片编辑器直接抛
+// "Cannot access 'model' before initialization"（TDZ）——
+// 表现为「点编辑没反应」，且只在控制台可见。
+const model = ref<Panel.Info>(props.itemInfo ? { ...props.itemInfo } : { ...restoreDefault })
+
 /* ---------- 小组件配置 ----------
  *
  * 值存在卡片的 widgetType / widgetConfig 两个字段里（后端已支持）：
@@ -118,7 +126,6 @@ interface Emit {
   (e: 'done', item: Panel.Info): void// 创建完成
 }
 
-const model = ref<Panel.Info>(props.itemInfo ? { ...props.itemInfo } : { ...restoreDefault })
 const formRef = ref<FormInst | null>(null)
 
 const rules: FormRules = {

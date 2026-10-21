@@ -144,6 +144,11 @@ watch(watchedContainerIds, (ids) => {
 // 提供给 AppIcon：卡片用它查询自身容器的状态，避免每张卡片各自轮询
 provide('dockerStateOf', docker.stateOf)
 
+// Docker 汇总（供顶部横幅使用）。
+// 从 hook 的返回对象里单独取出 computed —— 模板对「对象里的 computed」
+// 不会自动解包（只解包最外层），所以这里先展开成大写的常量再用。
+const dockerSummary = docker.summary
+
 /* ---------- 小组件（Widget）数据 ----------
  * 与 Docker 状态同一套做法：从当前可见卡片派生出「需要取数的卡片 ID」，
  * 交给 hook 集中批量请求一次，再把查询函数 provide 给卡片。
@@ -373,11 +378,19 @@ function convertServerTreeToFrontendTree(serverTree: any[]): any[] {
 
 // 构建书签树
 function buildBookmarkTree(bookmarks: any[]): any[] {
+  // 先剔除脏元素。
+  // 缓存里可能混入 null/undefined（写入中断、旧版本残留），
+  // 而后面的 filter 会直接读 b.isFolder —— 不让它有机会读到 null。
+  // 书签树是首页侧栏的入口，这类脏数据不该让整棵树崩掉。
+  const safe = (Array.isArray(bookmarks) ? bookmarks : []).filter(
+    b => b && typeof b === 'object',
+  )
+
   // 首先分离文件夹和书签
-  const folders = bookmarks.filter(b => {
+  const folders = safe.filter(b => {
     return (b.isFolder === 1 || (b.isFolder && typeof b.isFolder === 'boolean'));
   });
-  const items = bookmarks.filter(b => {
+  const items = safe.filter(b => {
     return (b.isFolder === 0 || (!b.isFolder && typeof b.isFolder === 'boolean'));
   });
 
@@ -399,19 +412,35 @@ function buildBookmarkTree(bookmarks: any[]): any[] {
       isFolder: true,
       sort: folderSort // 保存排序字段
     };
-    // 使用id作为map的键
-    folderMap.set(folderId.toString(), folderNode);
+    // map 的键统一用字符串（见上面 set 时也做了 toString）。
+    // folderId 可能是 number，这里显式转换，避免 number/string 键不一致。
+    folderMap.set(String(folderId), folderNode);
     // 同时也将文件夹名称作为键，以便处理嵌套关系
     folderMap.set(folderTitle, folderNode);
   });
 
-  // 将文件夹添加到其父文件夹中
-  folders.forEach(folder => {
-    const folderNode = folderMap.get(folder.id.toString())
+  // 将文件夹添加到其父文件夹中。
+  //
+  // ★ 这里统一用「key ?? id」的结果（即 folderId）来取 map，
+  //   而不是再读一次 folder.id —— 前端格式的节点**只有 key 没有 id**，
+  //   直接读 folder.id 会抛
+  //   "Cannot read properties of undefined (reading 'id')"。
+  //   第一段已经算好了 folderId，第二段却没用它，是这段代码的原始缺陷。
+  folders.forEach((folder) => {
+    const isFrontendFormat = folder.hasOwnProperty('key') && folder.hasOwnProperty('label')
+    const folderId = isFrontendFormat ? folder.key : folder.id
+    // 元素本身可能为 null/undefined（脏数据/缓存损坏），跳过而不是崩掉整棵树
+    if (folderId === undefined || folderId === null)
+      return
+
+    const folderNode = folderMap.get(String(folderId))
+    if (!folderNode)
+      return
+
     // 检查是否有ParentUrl并且不是根节点(0)
     if (folder.ParentUrl && folder.ParentUrl !== '0' && folder.ParentUrl !== 0) {
       // 尝试用不同的方式查找父文件夹
-      let parentFolder = folderMap.get(folder.ParentUrl.toString())
+      let parentFolder = folderMap.get(String(folder.ParentUrl))
 
       if (!parentFolder) {
         // 如果找不到，尝试用文件夹标题匹配
@@ -1318,6 +1347,40 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
             />
           </div>
 
+          <!-- Docker 容器汇总横幅。
+               对应原作者 SSR 版的 .docker-banner（panel.html + app.js 的
+               applyStates）。原先 Vue 版只有每张卡片右上角的小圆点，
+               用户得一个个数才知道"几个在跑"；这里补一条汇总，
+               让整体状况一眼可见。
+               没有任何 Docker 卡片时不渲染，避免占位。 -->
+          <div
+            v-if="dockerSummary.total > 0"
+            class="docker-banner"
+            :class="{ 'is-dim': dockerSummary.unavailable }"
+          >
+            <span
+              class="docker-banner-dot"
+              :class="dockerSummary.unavailable
+                ? 'is-off'
+                : (dockerSummary.running > 0 ? 'is-on' : 'is-off')"
+            />
+            <!-- 拿不到状态时不报「0 / N 运行中」——那会让用户以为容器全挂了。
+                 如实说明"无法获取"，并给出最可能的原因。 -->
+            <span v-if="dockerSummary.unavailable">
+              {{ t('panelHome.containersUnavailable') }}
+            </span>
+            <span v-else>
+              {{ dockerSummary.running }} / {{ dockerSummary.total }}
+              {{ t('panelHome.containersRunning') }}
+            </span>
+            <span
+              v-if="dockerSummary.loading"
+              class="docker-banner-hint"
+            >
+              {{ t('panelHome.containersLoading') }}
+            </span>
+          </div>
+
           <!-- 组纵向排列 -->
           <div
             v-for="(itemGroup, itemGroupIndex) in filterItems" :key="itemGroupIndex"
@@ -1535,6 +1598,52 @@ html {
 </style>
 
 <style scoped>
+/* ---------- Docker 容器汇总横幅 ----------
+ * 对应原作者 SSR 版的 .docker-banner（webrender/static/app.css）。
+ * 样式上刻意与系统监控卡片保持一致的视觉语言（半透明深底 + 圆角），
+ * 让它读起来像"面板自身状态"的一部分，而不是又一个卡片。 */
+.docker-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px auto 0;
+  padding: 8px 14px;
+  background: rgba(24, 26, 32, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  width: fit-content;
+}
+.docker-banner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+/* 有容器在跑 → 绿 + 脉冲；全停 → 灰。
+   用颜色区分"面板所监控的服务整体是否健康"，比数字更快读懂。 */
+.docker-banner-dot.is-on {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+  animation: docker-banner-pulse 2s ease-in-out infinite;
+}
+.docker-banner-dot.is-off {
+  background: #8a8a8a;
+}
+.docker-banner-hint {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+/* 拿不到状态时整体降权：这是"信息不可用"，不该和正常运行同样醒目 */
+.docker-banner.is-dim {
+  opacity: 0.65;
+}
+@keyframes docker-banner-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
 .mask {
   position: absolute;
   top: 0;

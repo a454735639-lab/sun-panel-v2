@@ -38,7 +38,7 @@ export interface ContainerState {
  * 失败由调用方静默降级（保留上次数据，下轮重试）。
  */
 export const getContainerStates = (containerIds: string[], withStats = true) => {
-  return request<{ list: ContainerState[] }>({
+  return request<{ list: ContainerState[]; dockerReady?: boolean }>({
     url: api.getContainerStates,
     method: 'post',
     data: { containerIds, withStats, ts: Date.now() },

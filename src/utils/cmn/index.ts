@@ -110,35 +110,55 @@ export async function updateLocalUserInfo() {
     visitMode: VisitMode
   }
 
+  /**
+   * 判断缓存里的认证信息是否可用。
+   *
+   * 必须校验结构，不能只判断"缓存存在" ——
+   * 该键早期可能写入过别的形状（或写入过程中断留下残缺值），
+   * 此时读 cachedData.user.xxx 会抛
+   * "Cannot read properties of undefined (reading 'user')"。
+   * 这属于"缓存格式演进"留下的坑：读缓存的地方要能容忍旧值。
+   */
+  function readValidAuthCache(): Req | null {
+    const c = ss.get(USER_AUTH_INFO_CACHE_KEY) as any
+    if (!c || typeof c !== 'object' || !c.user || typeof c.user !== 'object')
+      return null
+    return c as Req
+  }
+
+  function applyAuth(info: Req) {
+    userStore.updateUserInfo({ headImage: info.user.headImage, name: info.user.name })
+    authStore.setUserInfo(info.user)
+    authStore.setVisitMode(info.visitMode)
+  }
+
   try {
     // 1. 首先尝试从缓存读取数据
-    const cachedData = ss.get(USER_AUTH_INFO_CACHE_KEY)
+    const cachedData = readValidAuthCache()
     if (cachedData) {
-      userStore.updateUserInfo({ headImage: cachedData.user.headImage, name: cachedData.user.name })
-      authStore.setUserInfo(cachedData.user)
-      authStore.setVisitMode(cachedData.visitMode)
+      applyAuth(cachedData)
       return
     }
 
-    // 2. 缓存中没有数据，请求接口获取数据
+    // 2. 缓存中没有有效数据，请求接口获取数据
     const { data } = await getAuthInfo<Req>()
 
-    // 更新store
-    userStore.updateUserInfo({ headImage: data.user.headImage, name: data.user.name })
-    authStore.setUserInfo(data.user)
-    authStore.setVisitMode(data.visitMode)
+    // 接口返回的结构也要校验 —— 后端在异常情况下可能给出 data 为 null，
+    // 直接读 data.user 同样会抛。
+    if (!data || !(data as any).user)
+      return
 
-    // 3. 将数据永久保存到缓存中
+    applyAuth(data)
+
+    // 3. 将数据保存到缓存
     ss.set(USER_AUTH_INFO_CACHE_KEY, data)
-  } catch (error) {
+  }
+  catch (error) {
     console.error('获取用户认证信息失败', error)
-    // 出错时尝试从缓存获取
-    const cachedData = ss.get(USER_AUTH_INFO_CACHE_KEY)
-    if (cachedData) {
-      userStore.updateUserInfo({ headImage: cachedData.user.headImage, name: cachedData.user.name })
-      authStore.setUserInfo(cachedData.user)
-      authStore.setVisitMode(cachedData.visitMode)
-    }
+    // 出错时尝试从缓存获取（同样走结构校验，坏缓存直接忽略）
+    const cachedData = readValidAuthCache()
+    if (cachedData)
+      applyAuth(cachedData)
   }
 }
 

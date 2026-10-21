@@ -1,4 +1,4 @@
-import request from '@/utils/request'
+import { get, post } from '@/utils/request'
 
 /**
  * 小组件（Widget）API。
@@ -60,9 +60,15 @@ export interface WidgetItem extends WidgetResult {
  * 字段与提示都由后端提供，前端不写死 —— 后端加新类型时前端无需改动。
  */
 export const getWidgetTypes = () => {
-  return request<WidgetTypeInfo[]>({
+  // 必须用 get() 而不是默认导出（= post）：
+  // 后端该路由是 api.GET("/widget/types")，用 POST 会 404。
+  //
+  // 早先这里写的是 `request({ method: 'get' })` —— 看起来对，但
+  // `src/utils/request/index.ts` 里判断的是 `method === 'GET'`（大写），
+  // 小写的 'get' 匹配不上，于是走了 post 分支 → 404。
+  // 直接用专用的 get() 出口，不再依赖字符串大小写是否写对。
+  return get<WidgetTypeInfo[]>({
     url: api.types,
-    method: 'get',
     // 类型清单是静态的，失败时不该打扰用户（编辑器里会提示重试）
     silent: true,
   })
@@ -75,9 +81,8 @@ export const getWidgetTypes = () => {
  * （与 Docker 状态同样的理由 —— 否则提示会持续堆叠）。
  */
 export const getWidgetBatch = (cardIds: number[]) => {
-  return request<{ list: WidgetItem[] }>({
+  return post<{ list: WidgetItem[] }>({
     url: api.batch,
-    method: 'post',
     data: { cardIds },
     silent: true,
   })

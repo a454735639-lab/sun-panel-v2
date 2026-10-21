@@ -42,8 +42,16 @@ func DockerStates(c *gin.Context) {
 
 	// 未挂载 docker.sock 时视为「无容器」，返回空列表而不是报错：
 	// 面板本身仍应正常可用。
+	//
+	// 同时显式带上 dockerReady=false —— 前端据此区分
+	// 「真的没有容器」与「根本读不到 Docker」。
+	// 只返回空列表会让前端无法分辨：横幅会永远显示「状态获取中」，
+	// 用户以为再等等就有，实际上永远不会。
 	if global.DockerClient == nil {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"list": []any{}}})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{
+			"list":        []any{},
+			"dockerReady": false,
+		}})
 		return
 	}
 
@@ -56,7 +64,10 @@ func DockerStates(c *gin.Context) {
 		return
 	}
 	if len(req.ContainerIds) == 0 {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"list": []any{}}})
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{
+			"list":        []any{},
+			"dockerReady": true,
+		}})
 		return
 	}
 	// 上限保护：单次请求最多查 60 个容器，避免被构造超长列表拖慢面板。
@@ -74,5 +85,8 @@ func DockerStates(c *gin.Context) {
 		states = []dockerApi.ContainerState{}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"list": states}})
+	c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{
+		"list":        states,
+		"dockerReady": true,
+	}})
 }

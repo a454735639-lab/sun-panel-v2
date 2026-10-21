@@ -200,11 +200,16 @@ export function logUnhandledRejection(reason: any) {
   const text = typeof reason === 'string'
     ? reason
     : (reason && (reason.message || reason.msg)) || String(reason)
+  // 带上堆栈 —— 只有 message 定位不到是哪一行，
+  // 而堆栈是唯一能指出"哪段代码抛的"的线索（实测踩过：
+  // 一条 "Cannot read properties of undefined (reading 'id')"
+  // 光看 message 完全无从下手）。
+  const stack = reason && typeof reason === 'object' ? (reason.stack || '') : ''
   pushLog({
     time: nowStr(),
     kind: 'unhandled',
     summary: truncate(scrub(text), 160),
-    detail: scrub(text),
+    detail: [scrub(text), stack ? `堆栈:\n${scrub(stack)}` : ''].filter(Boolean).join('\n'),
     route: currentRoute(),
   })
 }
