@@ -11,4 +11,5 @@ func Init(routerGroup *gin.RouterGroup) {
 	InitNotepad(routerGroup)
 	InitSearchEngine(routerGroup)
 	InitUrlRule(routerGroup)
+	InitDocker(routerGroup)
 }

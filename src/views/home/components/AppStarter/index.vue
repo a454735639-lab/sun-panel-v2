@@ -44,6 +44,15 @@ const apps = ref<App[]>([
     icon: 'tabler:file-upload',
   },
   {
+    // Docker 容器管理：列出全部容器、看状态与资源、启停重启。
+    // 对照作者 v2 的「系统应用 → Docker」。
+    // 不设 auth —— 普通用户能看（这也是他排查"我服务是不是挂了"的入口），
+    // 启停按钮在组件内部按 role 隐藏，后端也会再校验一次。
+    name: t('apps.dockerManage.appName'),
+    componentName: 'DockerManage',
+    icon: 'mdi:docker',
+  },
+  {
     // 公共图库：浏览所有账号共享的图片。
     // 不设 auth —— 普通用户也能看与用，它本就是为共享而存在的。
     name: t('apps.publicGallery.appName'),

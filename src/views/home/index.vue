@@ -7,6 +7,7 @@ import { Clock, SystemMonitor } from '@/components/deskModule'
 import SearchBoxWithSuggestions from '@/components/deskModule/SearchBoxWithSuggestions/index.vue'
 import { SvgIcon } from '@/components/common'
 import { deletes, getListByGroupId, saveSort } from '@/api/panel/itemIcon'
+import { containerAction } from '@/api/panel/dockerManage'
 
 import { setTitle, updateLocalUserInfo, openUrlWithoutReferer } from '@/utils/cmn'
 import { useAuthStore, usePanelState } from '@/store'
@@ -822,6 +823,15 @@ function handleRightMenuSelect(key: string | number) {
       if (currentRightSelectItem.value && currentRightSelectItem.value.lanUrl)
         openPage(currentRightSelectItem.value?.openMethod, currentRightSelectItem.value.lanUrl, currentRightSelectItem.value?.title)
       break
+    case 'dockerStart':
+      handleContainerAction('start')
+      break
+    case 'dockerStop':
+      handleContainerAction('stop')
+      break
+    case 'dockerRestart':
+      handleContainerAction('restart')
+      break
     case 'edit':
       // 这里有个奇怪的问题，如果不使用{...}的方式 父组件的值会同步修改 标记一下
       handleEditItem({ ...currentRightSelectItem.value } as Panel.ItemInfo)
@@ -925,6 +935,56 @@ function handleSaveSort(itemGroup: ItemGroup) {
   }
 }
 
+/** 右键选中的卡片绑定的容器 ID（非 Docker 卡片为空串） */
+const currentContainerId = computed(() => {
+  const it = currentRightSelectItem.value
+  if (!it || it.cardType !== 2)
+    return ''
+  return parseContainerId(it.expandParam)
+})
+
+/** 右键选中的卡片的容器实时状态（用于决定菜单显示"启动"还是"停止"） */
+const currentContainerState = computed(() => {
+  const id = currentContainerId.value
+  if (!id)
+    return undefined
+  return docker.stateOf(id)
+})
+
+/**
+ * 右键菜单里的容器启停/重启。
+ *
+ * 与容器管理页走同一个 API，但这里给"就地操作"的即时反馈：
+ * 完成后立刻重查一次该容器状态，让卡片上的状态点马上变化 ——
+ * 否则用户点了"停止"后要等下一个 5 秒轮询才看到变化，会以为没生效。
+ */
+async function handleContainerAction(action: 'start' | 'stop' | 'restart') {
+  const cid = currentContainerId.value
+  if (!cid)
+    return
+  const label = action === 'start'
+    ? t('panelHome.startContainer')
+    : action === 'stop'
+      ? t('panelHome.stopContainer')
+      : t('panelHome.restartContainer')
+  try {
+    const res = await containerAction(cid, action)
+    if (res?.code === 0 && res.data?.ok) {
+      ms.success(t('panelHome.containerActionSuccess', { action: label }))
+      // 容器状态切换有延迟，稍等再刷新
+      setTimeout(() => {
+        setWatchedContainers([...watchedContainerIds.value])
+      }, 700)
+    }
+    else {
+      ms.error(res?.msg || t('common.failed'))
+    }
+  }
+  catch {
+    // 请求层已弹提示
+  }
+}
+
 function getDropdownMenuOptions() {
   const dropdownMenuOptions = [
     {
@@ -951,6 +1011,26 @@ function getDropdownMenuOptions() {
   }
 
   if (authStore.visitMode === VisitMode.VISIT_MODE_LOGIN) {
+    // Docker 卡片：直接在右键菜单里启停/重启容器。
+    //
+    // 对应作者截图里的「启动容器 / 停止容器 / 重启容器」三项。
+    // 快捷操作的意义在于：容器挂了想拉起来时，不必先进容器管理页找到它 ——
+    // 在出错的那张卡片上右键就能处理。
+    //
+    // 仅管理员可见：后端也会校验 role，这里隐藏是为了避免
+    // 普通用户点了才知道"没权限"。
+    const cid = currentContainerId.value
+    if (cid && authStore.userInfo?.role === 1) {
+      const running = !!currentContainerState.value?.running
+      dropdownMenuOptions.push({
+        label: running ? t('panelHome.stopContainer') : t('panelHome.startContainer'),
+        key: running ? 'dockerStop' : 'dockerStart',
+      }, {
+        label: t('panelHome.restartContainer'),
+        key: 'dockerRestart',
+      })
+    }
+
     dropdownMenuOptions.push({
       label: t('common.edit'),
       key: 'edit',

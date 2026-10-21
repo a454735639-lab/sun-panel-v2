@@ -1,4 +1,5 @@
 import About from './About/index.vue'
+import DockerManage from './DockerManage/index.vue'
 import GlobalSettings from './GlobalSettings/index.vue'
 import ImportExport from './ImportExport/index.vue'
 import ItemGroupManage from './ItemGroupManage/index.vue'
@@ -7,6 +8,7 @@ import Users from './Users/index.vue'
 
 export {
   About,
+  DockerManage,
   GlobalSettings,
   ImportExport,
   ItemGroupManage,

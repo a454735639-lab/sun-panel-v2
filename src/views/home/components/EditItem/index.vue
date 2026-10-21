@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps, ref, watch } from 'vue'
 import type { FormInst, FormRules } from 'naive-ui'
-import { NButton, NForm, NFormItem, NGrid, NGridItem, NInput, NInputGroup, NModal, NSelect, NSwitch, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
+import { NButton, NCheckbox, NForm, NFormItem, NGrid, NGridItem, NInput, NInputGroup, NModal, NSelect, NSwitch, NCollapse, NCollapseItem, useMessage } from 'naive-ui'
 import IconEditor from './IconEditor.vue'
 import { edit, getSiteFavicon } from '@/api/panel/itemIcon'
 import { getList as getGroupList } from '@/api/panel/itemIconGroup'
 import { getWidgetTypes, type WidgetTypeInfo } from '@/api/panel/widget'
+import { listContainers, type DockerContainer } from '@/api/panel/dockerManage'
 import { t } from '@/locales'
 
 interface Props {
@@ -121,6 +122,104 @@ watch(() => model.value.widgetType, (val, old) => {
     widgetConfigMap.value = {}
 })
 
+/* ---------- Docker 容器绑定 ----------
+ *
+ * 存法：cardType=2 + expandParam（JSON 字符串）。
+ * expandParam 里除了 containerId 还带着几个**展示相关**的开关：
+ *   containerId      绑定的容器
+ *   containerName    容器名（冗余存一份，容器被删后仍能显示"该卡片原本绑的是谁"）
+ *   badgeRunning / badgeRestarting / badgeStopped
+ *                    显示哪些状态徽章（对应作者的「显示状态徽章」勾选）
+ *
+ * 为什么不加数据库列：这些都是单张卡片的展示偏好，
+ * 且只在 Docker 卡片上有意义。塞进已有的 expandParam 里
+ * 既不用迁移，也不影响非 Docker 卡片。
+ */
+const containers = ref<DockerContainer[]>([])
+const dockerReady = ref<boolean | undefined>(undefined)
+const dockerLoading = ref(false)
+
+/** 当前绑定的容器 ID（空串 = 未绑定） */
+const containerId = ref('')
+
+/** 状态徽章显示开关 */
+const badgeRunning = ref(true)
+const badgeRestarting = ref(true)
+const badgeStopped = ref(true)
+
+const containerOptions = computed(() =>
+  containers.value.map(c => ({
+    label: c.name,
+    value: c.id,
+  })),
+)
+
+/** 解析 expandParam 到表单 */
+function parseExpandParam(raw?: string) {
+  const out: {
+    containerId: string
+    containerName: string
+    badgeRunning: boolean
+    badgeRestarting: boolean
+    badgeStopped: boolean
+  } = {
+    containerId: '',
+    containerName: '',
+    badgeRunning: true,
+    badgeRestarting: true,
+    badgeStopped: true,
+  }
+  if (!raw)
+    return out
+  try {
+    const o = JSON.parse(raw)
+    if (o && typeof o === 'object') {
+      if (typeof o.containerId === 'string')
+        out.containerId = o.containerId
+      if (typeof o.containerName === 'string')
+        out.containerName = o.containerName
+      // 未设置时默认显示（与作者一致：默认三个徽章都勾上）
+      if (o.badgeRunning === false)
+        out.badgeRunning = false
+      if (o.badgeRestarting === false)
+        out.badgeRestarting = false
+      if (o.badgeStopped === false)
+        out.badgeStopped = false
+    }
+  }
+  catch {
+    // 损坏时当作未绑定，不让整个弹窗打不开
+  }
+  return out
+}
+
+/** 拉容器列表。
+ *
+ * 在弹窗打开时就拉，而不是等用户展开折叠面板 ——
+ * 理由：展开事件依赖 naive-ui 的内部交互，一旦时机没对上，
+ * 用户会看到一个空的"容器"下拉，以为功能坏了。
+ * 这个请求很小（只读容器名与状态，不读 cgroup），
+ * 早拉一次换来"展开即用"的确定性，值得。
+ */
+async function loadContainers() {
+  if (dockerLoading.value)
+    return
+  dockerLoading.value = true
+  try {
+    const res = await listContainers(false)
+    if (res?.code === 0) {
+      containers.value = res.data?.list || []
+      dockerReady.value = res.data?.dockerReady
+    }
+  }
+  catch {
+    // 静默降级：拉不到就只显示"未检测到 Docker"，其他字段照常可编辑
+  }
+  finally {
+    dockerLoading.value = false
+  }
+}
+
 interface Emit {
   (e: 'update:visible', visible: boolean): void
   (e: 'done', item: Panel.Info): void// 创建完成
@@ -193,6 +292,30 @@ async function editApi() {
       model.value.widgetConfig = ''
     }
 
+    // 提交前把 Docker 绑定写回 cardType + expandParam。
+    //
+    // 规则：
+    //   - 选了容器 → cardType=2，expandParam 带 containerId 与三个徽章开关
+    //   - 没选容器 → cardType=0，并清空 expandParam
+    //
+    // 后者很重要：否则用户"解绑"容器后卡片仍是 cardType=2 但 expandParam 为空，
+    // 前端会把它当 Docker 卡片却找不到容器 ID，表现成一个永远灰点的卡片。
+    if (containerId.value) {
+      const picked = containers.value.find(c => c.id === containerId.value)
+      model.value.cardType = 2
+      model.value.expandParam = JSON.stringify({
+        containerId: containerId.value,
+        containerName: picked?.name || '',
+        badgeRunning: badgeRunning.value,
+        badgeRestarting: badgeRestarting.value,
+        badgeStopped: badgeStopped.value,
+      })
+    }
+    else {
+      model.value.cardType = 0
+      model.value.expandParam = ''
+    }
+
     const { code, data, msg } = await edit<Panel.ItemInfo>(model.value)
     if (code === 0) {
       show.value = false
@@ -246,6 +369,16 @@ watch(() => props.visible, (newValue) => {
     // 载入该卡片已有的小组件配置，让用户能看到并修改
     widgetConfigMap.value = parseWidgetConfig(model.value.widgetConfig)
     loadWidgetTypes()
+
+    // 载入 Docker 绑定（只有 cardType=2 的卡片才有）
+    const ep = parseExpandParam(model.value.expandParam)
+    containerId.value = model.value.cardType === 2 ? ep.containerId : ''
+    badgeRunning.value = ep.badgeRunning
+    badgeRestarting.value = ep.badgeRestarting
+    badgeStopped.value = ep.badgeStopped
+    // 打开弹窗就拉容器列表：展开折叠面板时数据已就绪，
+    // 不会出现"展开后空一下"的观感
+    loadContainers()
   }
 
   getGroupListOptions()
@@ -322,6 +455,56 @@ function getGroupListOptions() {
         <NFormItem path="lanOnly" :label="$t('iconItem.lanOnly')">
           <NSwitch v-model:value="model.lanOnly" :checked-value="1" :unchecked-value="0" />
         </NFormItem>
+
+        <!-- Docker 容器绑定。
+             对应作者设置面板里的「容器」下拉 + 「显示状态徽章」勾选。
+             **默认展开**：这个能力此前完全不存在（只能靠"扫描导入"批量生成），
+             折起来的话用户根本不会发现卡片可以绑定容器 ——
+             而"看不出容器状态"正是折叠它的代价。
+             区块只有两行（下拉 + 徽章勾选），不会明显拉长表单。 -->
+        <NCollapse class="mt-[4px]" :default-expanded-names="['docker']">
+          <NCollapseItem :title="$t('iconItem.docker')" name="docker">
+            <NFormItem :label="$t('iconItem.container')">
+              <NSelect
+                v-model:value="containerId"
+                :options="containerOptions"
+                :loading="dockerLoading"
+                :placeholder="dockerReady === false
+                  ? $t('iconItem.dockerUnavailable')
+                  : $t('iconItem.containerPlaceholder')"
+                :disabled="dockerReady === false"
+                clearable
+                filterable
+              />
+            </NFormItem>
+
+            <!-- 未挂载 docker.sock 时明确说明，而不是给个空下拉让用户困惑 -->
+            <div v-if="dockerReady === false" class="text-xs text-amber-600 mb-[10px] -mt-[6px] leading-relaxed">
+              {{ $t('iconItem.dockerUnavailableHint') }}
+            </div>
+
+            <template v-if="containerId">
+              <div class="text-xs text-gray-500 mb-[6px]">
+                {{ $t('iconItem.showBadges') }}
+              </div>
+              <div class="flex items-center gap-4 flex-wrap mb-[10px]">
+                <NCheckbox v-model:checked="badgeRunning">
+                  <span class="text-xs">{{ $t('iconItem.badgeRunning') }}</span>
+                </NCheckbox>
+                <NCheckbox v-model:checked="badgeRestarting">
+                  <span class="text-xs">{{ $t('iconItem.badgeRestarting') }}</span>
+                </NCheckbox>
+                <NCheckbox v-model:checked="badgeStopped">
+                  <span class="text-xs">{{ $t('iconItem.badgeStopped') }}</span>
+                </NCheckbox>
+              </div>
+
+              <div class="text-xs text-gray-400 leading-relaxed">
+                {{ $t('iconItem.dockerHint') }}
+              </div>
+            </template>
+          </NCollapseItem>
+        </NCollapse>
 
         <!-- 小组件：在卡片下方显示实时状态（下载进度、媒体库统计等）。
              默认折叠 —— 多数卡片不需要，展开会拉长表单。 -->

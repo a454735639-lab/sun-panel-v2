@@ -8,4 +8,5 @@ type ApiPanel struct {
 	Bookmark      Bookmark
 	SearchEngine  SearchEngine
 	UrlRule       UrlRuleApi
+	Docker        DockerApi
 }

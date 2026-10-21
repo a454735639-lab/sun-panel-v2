@@ -78,6 +78,31 @@ const containerId = computed(() => {
   return parseContainerId(props.itemInfo?.expandParam)
 })
 
+/**
+ * 徽章显示开关（对应编辑器里的「显示状态徽章」勾选）。
+ *
+ * 存在 expandParam 里，默认三个都开 —— 与作者一致。
+ * 用户可能只想看"是否在跑"，不想被重启中的黄色打扰。
+ */
+const badgeFlags = computed(() => {
+  const out = { running: true, restarting: true, stopped: true }
+  const raw = props.itemInfo?.expandParam
+  if (!raw)
+    return out
+  try {
+    const o = JSON.parse(raw)
+    if (o && typeof o === 'object') {
+      if (o.badgeRunning === false) out.running = false
+      if (o.badgeRestarting === false) out.restarting = false
+      if (o.badgeStopped === false) out.stopped = false
+    }
+  }
+  catch {
+    // 配置损坏时按默认全显示，不让卡片空掉
+  }
+  return out
+})
+
 const containerState = computed(() => {
   if (!containerId.value) return undefined
   return stateOf(containerId.value)
@@ -108,6 +133,29 @@ const stateClass = computed(() => {
   if (s === 'restarting' || s === 'paused')
     return 'pending'
   return 'created'
+})
+
+/**
+ * 是否显示状态点。
+ *
+ * 依据用户勾选的徽章类型：某类状态被取消勾选时，该状态下不显示点。
+ * 状态未知时仍然显示（否则"读不到状态"会表现得像"没有 Docker 卡片"，
+ * 反而掩盖了问题）。
+ */
+const showDot = computed(() => {
+  if (!containerId.value)
+    return false
+  const st = containerState.value
+  if (!st)
+    return true
+  const f = badgeFlags.value
+  const s = (st.state || '').toLowerCase()
+  if (st.running)
+    return f.running
+  if (s === 'restarting' || s === 'paused')
+    return f.restarting
+  // dead 归到"已停止"这一类：都属于"不跑了"，用户勾"已停止"就代表要看
+  return f.stopped
 })
 
 function fmtBytes(v?: number) {
@@ -190,7 +238,7 @@ interface DockerStateLike {
 
       <!-- Docker 状态点：卡片右上角 -->
       <span
-        v-if="containerId"
+        v-if="showDot"
         class="docker-dot"
         :class="'docker-dot--' + stateClass"
         :title="stateTitle"
@@ -207,7 +255,7 @@ interface DockerStateLike {
         <ItemIcon :item-icon="itemInfo?.icon" :size="itemIconSize" :fallback-text="itemInfo?.title" />
         <!-- Docker 状态点 -->
         <span
-          v-if="containerId"
+          v-if="showDot"
           class="docker-dot"
           :class="'docker-dot--' + stateClass"
           :title="stateTitle"
