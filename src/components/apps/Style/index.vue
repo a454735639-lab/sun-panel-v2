@@ -231,6 +231,17 @@ function resetPanelConfig() {
         </div>
       </div>
 
+      <!-- 小卡的描述开关。原先没有这一项，小卡的描述显隐实际是借用了
+           info 模式的设置并取反，导致默认不显示描述、也没有入口打开。 -->
+      <div v-if="panelState.panelConfig.iconStyle === PanelPanelConfigStyleEnum.icon" class="mt-[5px]">
+        <div>
+          {{ $t('apps.baseSettings.hideDescription') }}
+        </div>
+        <div class="flex items-center mt-[5px]">
+          <NSwitch v-model:value="panelState.panelConfig.iconTextIconHideDescription" />
+        </div>
+      </div>
+
       <div class="mt-[5px]">
         <div>
           {{ $t('common.textColor') }}

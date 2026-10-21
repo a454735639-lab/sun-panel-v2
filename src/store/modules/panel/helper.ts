@@ -14,6 +14,8 @@ export function defaultStatePanelConfig(): Panel.panelConfig {
     iconTextColor: '#ffffff',
     iconTextInfoHideDescription: false,
     iconTextIconHideTitle: false,
+    // 小卡默认显示描述（与「隐藏标题」同为小卡专属开关）
+    iconTextIconHideDescription: false,
     logoText: 'Sun-Panel',
     logoImageSrc: '',
     clockShowSecond: false,

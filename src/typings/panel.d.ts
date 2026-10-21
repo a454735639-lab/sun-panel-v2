@@ -62,6 +62,14 @@ declare namespace Panel {
         iconTextColor?:string
         iconTextInfoHideDescription?:boolean
         iconTextIconHideTitle?:boolean
+        /**
+         * 小图标模式下隐藏描述。与 iconTextIconHideTitle 对应 ——
+         * 两者都只作用于小卡；info 模式用 iconTextInfoHideDescription。
+         *
+         * 此前小卡的描述显隐是借用 info 模式的字段并取反得到的，
+         * 既没有独立开关，默认表现也不对（小卡永远不显示描述）。
+         */
+        iconTextIconHideDescription?:boolean
         logoText?:string
         logoImageSrc?:string
         clockShowSecond?:boolean

@@ -156,7 +156,11 @@ interface DockerStateLike {
           <div class="app-icon-info-text-box-title font-semibold w-full">
             {{ itemInfo?.title }}
           </div>
-          <div v-if="!iconTextInfoHideDescription" class="app-icon-info-text-box-description">
+          <div
+            v-if="!iconTextInfoHideDescription"
+            class="app-icon-info-text-box-description"
+            :title="itemInfo?.description"
+          >
             {{ itemInfo?.description }}
           </div>
           <!-- 容器指标：仅 Docker 卡片且容器运行中时显示。
@@ -183,7 +187,7 @@ interface DockerStateLike {
         :title="stateTitle || itemInfo?.description"
         :data-container-id="containerId || undefined"
       >
-        <ItemIcon :item-icon="itemInfo?.icon" :size="itemIconSize" />
+        <ItemIcon :item-icon="itemInfo?.icon" :size="itemIconSize" :fallback-text="itemInfo?.title" />
         <!-- Docker 状态点 -->
         <span
           v-if="containerId"
@@ -201,8 +205,9 @@ interface DockerStateLike {
       </div>
       <div
         v-if="!iconTextInfoHideDescription && itemInfo?.description"
-        class="app-icon-small-description text-center text-xs opacity-80 cursor-pointer mt-[1px]"
+        class="app-icon-small-description text-center cursor-pointer mt-[1px]"
         :style="{ color: iconTextColor }"
+        :title="itemInfo?.description"
       >
         {{ itemInfo?.description }}
       </div>
@@ -237,6 +242,47 @@ interface DockerStateLike {
 .app-icon-widget {
   margin-top: 4px;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
+}
+
+/* 小卡的描述文字。
+   关键约束：**必须单行截断**。
+   小卡网格是等宽列（minmax(100px, 1fr)），若描述换行，
+   长描述会把所在那一行撑高，破坏整片宫格的对齐 —— 也就失去了
+   小卡"齐整、好扫读"的核心优势。完整内容通过 title 悬停查看。 */
+.app-icon-small-description {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* info 模式的标题与描述。
+ *
+ * 两条约束都是为了"卡片高度齐整"：
+ *   - 标题单行截断：长标题（如 "moviepilot-v3"）换行会把卡片撑高
+ *   - 描述最多两行：描述长度差异很大，不限行会导致同一行卡片高矮不一，
+ *     视觉上参差。完整内容通过 title 悬停查看。
+ */
+.app-icon-info-text-box-title {
+  font-size: 0.95rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-icon-info-text-box-description {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  opacity: 0.8;
+  /* 限制两行，超出省略 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 /* ---------- Docker 容器状态点 ----------
