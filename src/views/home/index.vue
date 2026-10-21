@@ -667,11 +667,19 @@ async function getList() {
       return null
     },
     onUpdate: (list) => {
+      // 防御：即便上游给了非数组（缓存损坏等），也不该让首页挂掉。
+      // 这类"外部数据未必符合预期"的地方值得多一道检查 ——
+      // 首页是入口，崩了用户就什么都做不了。
+      if (!Array.isArray(list)) {
+        items.value = []
+        filterItemsByNetworkMode()
+        return
+      }
       items.value = list
       // 为每个分组加载图标数据（内部同样走 SWR）
       for (let i = 0; i < list.length; i++) {
         const element = list[i]
-        if (element.id)
+        if (element && element.id)
           updateItemIconGroupByNet(i, element.id)
       }
       // 应用网络模式过滤
@@ -694,6 +702,9 @@ async function updateItemIconGroupByNet(itemIconGroupIndex: number, itemIconGrou
   }
 
   const applyItems = (list: Panel.ItemInfo[]) => {
+    // 同 getList.onUpdate 的防御：非数组时不写入，避免污染 items
+    if (!Array.isArray(list))
+      return
     // 用 id 重新定位组，而不是直接用传入的 index。
     // 刷新是异步的，期间 items 可能已被整体替换（后端增删了组），
     // 此时旧 index 会写到错误的组上 —— 表现为"卡片串组"。

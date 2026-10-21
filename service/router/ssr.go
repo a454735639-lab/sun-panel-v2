@@ -98,5 +98,10 @@ func InitSSR(rootRouter *gin.Engine) {
 		// 路径与前端现有调用保持一致（/api/docker/container/getContainerStates），
 		// 不改前端即可修复状态灯与 CPU/RAM 显示。
 		api.POST("/docker/container/getContainerStates", pages.DockerStates)
+
+		// 扫描容器生成候选卡片（JSON 版，供 Vue 使用）。
+		// SSR 版走 /settings/scan 的表单流程，Vue 走这个端点。
+		// 两者共用 pages/buildScanCandidates，分类规则只有一处维护。
+		api.POST("/docker/scan/candidates", pages.DockerScanCandidates)
 	}
 }

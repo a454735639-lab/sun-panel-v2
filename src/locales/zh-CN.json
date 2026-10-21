@@ -214,6 +214,23 @@
       "testHit": "命中规则",
       "testTarget": "将打开",
       "testMiss": "没有规则命中，将使用自动内外网判断。"
+    },
+    "scanImport": {
+      "title": "扫描导入（从 Docker 自动生成卡片）",
+      "desc": "扫描本机 Docker 容器，按镜像类型自动归类并生成候选卡片。已导入过的容器会被标注，默认不勾选以免重复添加。",
+      "rescan": "重新扫描",
+      "scanning": "正在扫描容器…",
+      "selectNew": "全选未导入",
+      "selectNone": "全不选",
+      "import": "导入选中",
+      "importing": "正在导入：{done} / {total}",
+      "imported": "已导入 {count} 张卡片",
+      "importFailed": "导入失败，请稍后重试",
+      "scanFailed": "扫描失败，请确认 Docker 可用",
+      "nothingSelected": "请至少勾选一个容器",
+      "noDocker": "未检测到 Docker。请确认容器已挂载 /var/run/docker.sock 后重新扫描。",
+      "empty": "没有可导入的容器。",
+      "already": "已导入"
     }
   },
   "notepad": {

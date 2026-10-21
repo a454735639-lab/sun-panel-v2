@@ -102,21 +102,34 @@ export function staleWhileRevalidate<T>(opts: SwrOptions<T>): void {
   const { key, readCache, writeCache, fetchRemote, onUpdate, onSettled } = opts
 
   const cached = readCache()
-  if (cached !== null) {
+
+  // 注意：这里必须同时排除 null 与 undefined。
+  //
+  // ss.get() 在「本地没有该 key」时是**隐式返回 undefined**
+  // （函数体走到末尾没有 return），而非显式 null。
+  // 早先只用 `!== null` 判断，导致 undefined 被当成有效缓存传给
+  // onUpdate，调用方一访问 .length 就抛
+  // "Cannot read properties of undefined"。
+  //
+  // 用宽松的 != null 一次性排除两者 —— 这类"缓存读取的返回值语义"
+  // 不该由每个调用方各自记住。
+  const hasCache = cached !== null && cached !== undefined
+
+  if (hasCache) {
     // 先让界面有内容 —— 这是"秒开"的来源
-    onUpdate(cached)
+    onUpdate(cached as T)
   }
 
   // 后台刷新。用 dedupe 合并同一 key 的并发请求。
   dedupe(key, fetchRemote)
     .then((remote) => {
-      if (remote === null) {
+      if (remote === null || remote === undefined) {
         // 拉取失败：保留缓存，静默收尾
         onSettled?.()
         return
       }
 
-      if (cached !== null && isSameData(cached, remote)) {
+      if (hasCache && isSameData(cached, remote)) {
         // 数据没变：不触发 onUpdate，避免无意义的重渲染
         onSettled?.()
         return

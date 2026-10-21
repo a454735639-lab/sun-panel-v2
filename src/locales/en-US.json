@@ -209,6 +209,23 @@
       "testHit": "Matched rule",
       "testTarget": "Will open",
       "testMiss": "No rule matched. Automatic LAN/WAN detection will be used."
+    },
+    "scanImport": {
+      "title": "Scan Import (generate cards from Docker)",
+      "desc": "Scan local Docker containers, auto-classify by image type, and generate candidate cards. Containers already imported are marked and unchecked by default to avoid duplicates.",
+      "rescan": "Rescan",
+      "scanning": "Scanning containers…",
+      "selectNew": "Select all new",
+      "selectNone": "Select none",
+      "import": "Import selected",
+      "importing": "Importing: {done} / {total}",
+      "imported": "Imported {count} cards",
+      "importFailed": "Import failed, please try again",
+      "scanFailed": "Scan failed — please check that Docker is available",
+      "nothingSelected": "Please select at least one container",
+      "noDocker": "Docker not detected. Make sure /var/run/docker.sock is mounted, then rescan.",
+      "empty": "No importable containers found.",
+      "already": "Imported"
     }
   },
   "notepad": {

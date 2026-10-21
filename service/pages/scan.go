@@ -16,18 +16,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ScanCandidate 扫描出的候选卡片
+// ScanCandidate 扫描出的候选卡片。
+//
+// JSON 标签用于 Vue 前端的 /api/docker/scan/candidates 端点；
+// SSR 模板按字段名直接取值，加标签不影响它。
 type ScanCandidate struct {
-	ContainerID string
-	Name        string
-	Image       string
-	State       string
-	Port        int
-	LanUrl      string
-	WanUrl      string
-	Group       string
-	IconUrl     string
-	Exists      bool
+	ContainerID string `json:"containerId"`
+	Name        string `json:"name"`
+	Image       string `json:"image"`
+	State       string `json:"state"`
+	Port        int    `json:"port"`
+	LanUrl      string `json:"lanUrl"`
+	WanUrl      string `json:"wanUrl"`
+	Group       string `json:"group"`
+	IconUrl     string `json:"iconUrl"`
+	Exists      bool   `json:"exists"`
 	Excluded    bool
 }
 

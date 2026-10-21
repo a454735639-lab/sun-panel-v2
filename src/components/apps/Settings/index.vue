@@ -4,6 +4,7 @@ import { NButton, NCard, NTag } from 'naive-ui'
 import { t } from '@/locales'
 import UrlRuleManager from './UrlRuleManager.vue'
 import DiagnosticsPanel from './DiagnosticsPanel.vue'
+import ScanImport from './ScanImport.vue'
 
 // 自动判断内外网测试
 const testStatus = ref<'idle' | 'testing' | 'success_lan' | 'success_wan' | 'failed'>('idle')
@@ -129,6 +130,9 @@ onMounted(() => {
 
     <!-- 诊断日志：把失败请求与 JS 异常收集起来，便于用户一键反馈 -->
     <DiagnosticsPanel />
+
+    <!-- 扫描导入：自动扫描 Docker 容器生成卡片（对应 SSR 版的「扫描导入」页签） -->
+    <ScanImport />
   </div>
 </template>
 
