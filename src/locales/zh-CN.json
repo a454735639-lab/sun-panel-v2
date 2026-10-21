@@ -180,7 +180,11 @@
       "nothingText": "你还没有上传过任何图片",
       "path": "文件路径",
       "setWallpaper": "设置为壁纸",
-      "uploadTime": "上传时间"
+      "uploadTime": "上传时间",
+      "share": "共享到公共图库",
+      "unshare": "取消共享",
+      "shareSuccess": "已共享到公共图库",
+      "unshareSuccess": "已取消共享"
     },
     "userInfo": {
       "appName": "我的信息",
@@ -240,6 +244,14 @@
       "loadFailed": "加载图库失败",
       "empty": "图库还没有图片，先去「图库」上传",
       "noMatch": "没有匹配的图片"
+    },
+    "publicGallery": {
+      "appName": "公共图库",
+      "title": "公共图库",
+      "desc": "所有账号共享的图片。可以复制链接或设为壁纸；删除仍由上传者在「上传文件管理」里操作。",
+      "searchPlaceholder": "搜索文件名",
+      "loadFailed": "加载公共图库失败",
+      "empty": "还没有图片被共享到公共图库"
     }
   },
   "notepad": {

@@ -49,6 +49,13 @@ const apps = ref<App[]>([
     icon: 'tabler:file-upload',
   },
   {
+    // 公共图库：浏览所有账号共享的图片。
+    // 不设 auth —— 普通用户也能看与用，它本就是为共享而存在的。
+    name: t('apps.publicGallery.appName'),
+    componentName: 'PublicGallery',
+    icon: 'material-symbols:photo-library-outline',
+  },
+  {
     name: t('apps.exportImport.appName'),
     componentName: 'ImportExport',
     icon: 'icon-park-outline-import-and-export',

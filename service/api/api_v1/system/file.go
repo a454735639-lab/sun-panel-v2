@@ -149,6 +149,9 @@ func (a *FileApi) GetList(c *gin.Context) {
 			// 漏掉了 —— 前端想按类型筛选文件（如图库只显示图片）时
 			// 只能退化到解析文件名后缀。补上更可靠。
 			"ext": v.Ext,
+			// 是否已共享到公共图库。列表里要显示"已共享"标记，
+			// 否则用户不知道自己哪些图是公开的。
+			"isPublic": v.IsPublic,
 		})
 	}
 	apiReturn.SuccessListData(c, data, count)
@@ -182,4 +185,80 @@ func (a *FileApi) Deletes(c *gin.Context) {
 
 	apiReturn.Success(c)
 
+}
+
+// SetPublic 把已有文件设为共享 / 取消共享到公共图库。
+//
+// 只允许操作自己的文件（带 user_id 条件）—— 否则任何用户都能
+// 把别人的图"共享"出去，等于变相公开他人的私人图片。
+func (a *FileApi) SetPublic(c *gin.Context) {
+	userInfo, _ := base.GetCurrentUserInfo(c)
+
+	var req struct {
+		IDs      []uint `json:"ids"`
+		IsPublic int    `json:"isPublic"`
+	}
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		apiReturn.ErrorParamFomat(c, err.Error())
+		return
+	}
+	if len(req.IDs) == 0 {
+		apiReturn.ErrorParamFomat(c, "ids 不能为空")
+		return
+	}
+
+	v := 0
+	if req.IsPublic == 1 {
+		v = 1
+	}
+
+	res := global.Db.Model(&models.File{}).
+		Where("user_id = ? AND id in ?", userInfo.ID, req.IDs).
+		Update("is_public", v)
+	if res.Error != nil {
+		apiReturn.ErrorDatabase(c, res.Error.Error())
+		return
+	}
+
+	apiReturn.SuccessData(c, gin.H{"updated": res.RowsAffected})
+}
+
+// PublicList 公共图库：所有用户共享的图片。
+//
+// 只返回 is_public=1 的文件，且**不按当前用户过滤** —— 这正是"公共"的含义。
+// 但仍要求登录：公共图库是站内共享，不是对互联网公开。
+func (a *FileApi) PublicList(c *gin.Context) {
+	list := []models.File{}
+	if err := global.Db.
+		Where("is_public = ?", 1).
+		Order("created_at desc").
+		Find(&list).Error; err != nil {
+		apiReturn.ErrorDatabase(c, err.Error())
+		return
+	}
+
+	// 与 GetList 保持同一返回结构（src 去掉开头的 "."，
+	// 使前端拿到的都是可直接用于 <img src> 的路径）。
+	data := []map[string]interface{}{}
+	for _, v := range list {
+		src := v.Src
+		if len(src) > 0 && src[0] == '.' {
+			src = src[1:]
+		}
+		data = append(data, map[string]interface{}{
+			"src":        src,
+			"fileName":   v.FileName,
+			"id":         v.ID,
+			"createTime": v.CreatedAt,
+			"updateTime": v.UpdatedAt,
+			"path":       v.Src,
+			"ext":        v.Ext,
+			"isPublic":   v.IsPublic,
+			// 上传者：公共图库需要知道图是谁分享的，
+			// 便于使用者辨认来源、以及后续追溯。
+			"userId": v.UserId,
+		})
+	}
+
+	apiReturn.SuccessListData(c, data, int64(len(data)))
 }

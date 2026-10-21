@@ -19,6 +19,10 @@ func InitFileRouter(router *gin.RouterGroup) {
 		private.POST("/file/getList", FileApi.GetList)
 		private.POST("/file/deletes", FileApi.Deletes)
 
+		// 公共图库：站内共享的图片。仍要求登录 ——
+		// 它是"所有账号都能用"，不是"对互联网公开"。
+		private.POST("/file/publicList", FileApi.PublicList)
+		private.POST("/file/setPublic", FileApi.SetPublic)
 	}
 
 }

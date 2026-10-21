@@ -13,6 +13,8 @@ declare namespace File {
 		ext?: string
 		/** 服务端存储路径 */
 		path?: string
+		/** 是否已共享到公共图库（1 是 / 0 否） */
+		isPublic?: number
 	}
 
 

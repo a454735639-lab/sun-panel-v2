@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { NAlert, NButton, NButtonGroup, NCard, NEllipsis, NGrid, NGridItem, NImage, NImageGroup, NSpin, useDialog, useMessage } from 'naive-ui'
 import { onMounted, ref } from 'vue'
-import { deletes, getList } from '@/api/system/file'
+import { deletes, getList, setPublic } from '@/api/system/file'
 import { set as savePanelConfig } from '@/api/panel/userConfig'
 import { RoundCardModal, SvgIcon } from '@/components/common'
 import { copyToClipboard, timeFormat } from '@/utils/cmn'
@@ -72,6 +72,31 @@ async function deletesImges(id: number) {
   }
 }
 
+/**
+ * 切换「共享到公共图库」。
+ *
+ * 共享后文件仍归上传者所有（可随时取消），只是额外出现在公共图库里
+ * 供其他账号选用。因此这里用切换而非单向的"发布"。
+ */
+async function handleToggleShare(fileInfo: File.Info) {
+  const next: 0 | 1 = fileInfo.isPublic === 1 ? 0 : 1
+  try {
+    const { code, msg } = await setPublic([fileInfo.id as number], next)
+    if (code === 0) {
+      ms.success(next === 1
+        ? t('apps.uploadsFileManager.shareSuccess')
+        : t('apps.uploadsFileManager.unshareSuccess'))
+      getFileList()
+    }
+    else {
+      ms.error(`${t('common.failed')}:${msg}`)
+    }
+  }
+  catch {
+    ms.error(t('common.failed'))
+  }
+}
+
 function handleInfoClick(fileInfo: File.Info) {
   infoModalState.value.fileInfo = fileInfo
   infoModalState.value.show = true
@@ -132,6 +157,20 @@ onMounted(() => {
                     <NButton size="tiny" tertiary style="cursor: pointer;" :title="$t('apps.uploadsFileManager.setWallpaper')" @click="handleSetWallpaper(item.src)">
                       <template #icon>
                         <SvgIcon icon="lucide:wallpaper" />
+                      </template>
+                    </NButton>
+                    <!-- 共享到公共图库。已共享的用实心高亮表示，
+                         让用户一眼能看出哪些图是公开的。 -->
+                    <NButton
+                      size="tiny"
+                      tertiary
+                      :type="item.isPublic === 1 ? 'primary' : 'default'"
+                      :title="item.isPublic === 1 ? $t('apps.uploadsFileManager.unshare') : $t('apps.uploadsFileManager.share')"
+                      style="cursor: pointer;"
+                      @click="handleToggleShare(item)"
+                    >
+                      <template #icon>
+                        <SvgIcon :icon="item.isPublic === 1 ? 'material-symbols:public' : 'material-symbols:public-off'" />
                       </template>
                     </NButton>
                     <NButton size="tiny" tertiary type="error" style="cursor: pointer;" :title="$t('common.delete')" @click="handleDelete(item.id as number)">

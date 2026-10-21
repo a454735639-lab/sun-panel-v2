@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -129,8 +130,53 @@ func CreateDatabase(driver string, db *gorm.DB) error {
 		&models.SearchEngine{},
 		&models.UrlRule{}, // 地址匹配规则
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// AutoMigrate 在 SQLite 上**不会给已存在的表补新列**，且不报错。
+	//
+	// 实测复现：先用旧模型建表，再用加了新字段的模型 AutoMigrate，
+	// 它返回 nil error 但新列并未加上（PRAGMA table_info 可见缺失）。
+	// 后果是"代码里加了字段、数据库里没有"，运行时一读写该字段就报错，
+	// 而启动阶段毫无提示。
+	//
+	// 这里对所有需要补的列做一次显式检查 + 添加。
+	// 用 Migrator().HasColumn + AddColumn，语义明确、跨驱动一致。
+	if err := ensureColumns(db); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ensureColumns 为已有表补齐后加的列。
+//
+// 每加一个字段就到这里登记一条 —— 不加登记的直接后果是
+// 老部署升级后该字段在库里不存在（见上面 AutoMigrate 的说明）。
+func ensureColumns(db *gorm.DB) error {
+	type col struct {
+		table  string
+		column string
+		model  interface{}
+		field  string
+	}
+
+	need := []col{
+		// 公共图库：文件的共享标记
+		{table: "file", column: "is_public", model: &models.File{}, field: "IsPublic"},
+	}
+
+	for _, c := range need {
+		m := db.Migrator()
+		if m.HasTable(c.model) && !m.HasColumn(c.model, c.field) {
+			if err := m.AddColumn(c.model, c.field); err != nil {
+				return fmt.Errorf("为 %s 补列 %s 失败: %w", c.table, c.column, err)
+			}
+			fmt.Printf("已补列：%s.%s\n", c.table, c.column)
+		}
+	}
+	return nil
 }
 
 // 初始化一个用户,一个用户都没有的时候创建一个

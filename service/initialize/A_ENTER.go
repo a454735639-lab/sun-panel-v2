@@ -138,7 +138,14 @@ func DatabaseConnect() {
 		global.Logger.Infof("DATABASE CONNECTED: [%v] at path [%s]", databaseDrive, global.Config.GetValueStringOrDefault("sqlite", "file_path"))
 	}
 
-	database.CreateDatabase(databaseDrive, global.Db)
+	// 建表/补列失败必须暴露。
+	// 原实现忽略返回值：一旦迁移出错（例如新增字段没补上），
+	// 启动照常、"一切正常"，直到运行时读写该字段才报错 ——
+	// 那时排查成本高得多。
+	if err := database.CreateDatabase(databaseDrive, global.Db); err != nil {
+		global.Logger.Errorf("数据库初始化失败: %v", err)
+		panic(fmt.Sprintf("数据库初始化失败: %v", err))
+	}
 
 	database.NotFoundAndCreateUser(global.Db)
 	database.NotFoundAndCreateSearchEngines(global.Db)

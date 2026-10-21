@@ -12,3 +12,27 @@ export function deletes<T>(ids: number[]) {
     data: { ids },
   })
 }
+
+/**
+ * 公共图库：所有账号共享的图片。
+ *
+ * 仍要求登录 —— 它是「站内所有账号都能用」，不是「对互联网公开」。
+ */
+export function getPublicList<T>() {
+  return post<T>({
+    url: '/file/publicList',
+  })
+}
+
+/**
+ * 把自己上传的文件设为共享 / 取消共享。
+ *
+ * 后端会带上 user_id 条件，只能操作自己的文件 ——
+ * 否则任何用户都能把别人的图"共享"出去，等于变相公开他人的私人图片。
+ */
+export function setPublic<T>(ids: number[], isPublic: 0 | 1) {
+  return post<T>({
+    url: '/file/setPublic',
+    data: { ids, isPublic },
+  })
+}

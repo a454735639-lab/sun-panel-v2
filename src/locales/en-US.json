@@ -175,7 +175,11 @@
       "nothingText": "You haven't uploaded any images yet.",
       "path": "File path",
       "setWallpaper": "Set as wallpaper",
-      "uploadTime": "Upload time"
+      "uploadTime": "Upload time",
+      "share": "Share to public gallery",
+      "unshare": "Unshare",
+      "shareSuccess": "Shared to public gallery",
+      "unshareSuccess": "Unshared"
     },
     "userInfo": {
       "appName": "My Information",
@@ -235,6 +239,14 @@
       "loadFailed": "Failed to load gallery",
       "empty": "No images yet — upload some in Gallery first",
       "noMatch": "No matching images"
+    },
+    "publicGallery": {
+      "appName": "Public Gallery",
+      "title": "Public Gallery",
+      "desc": "Images shared by all accounts. You can copy the link or set as wallpaper; deletion is still done by the uploader in File Manager.",
+      "searchPlaceholder": "Search file name",
+      "loadFailed": "Failed to load public gallery",
+      "empty": "No images have been shared to the public gallery yet"
     }
   },
   "notepad": {
