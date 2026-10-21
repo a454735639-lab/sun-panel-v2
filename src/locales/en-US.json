@@ -228,6 +228,13 @@
       "noDocker": "Docker not detected. Make sure /var/run/docker.sock is mounted, then rescan.",
       "empty": "No importable containers found.",
       "already": "Imported"
+    },
+    "galleryPicker": {
+      "title": "Select from Gallery",
+      "searchPlaceholder": "Search file name",
+      "loadFailed": "Failed to load gallery",
+      "empty": "No images yet — upload some in Gallery first",
+      "noMatch": "No matching images"
     }
   },
   "notepad": {
@@ -364,7 +371,8 @@
     "widget": "Widget (show live status below the card)",
     "widgetType": "Widget Type",
     "widgetTypePlaceholder": "Leave empty to disable",
-    "widgetHint": "Data is fetched and cached server-side (~20s). The browser only renders the result, so credentials are never exposed."
+    "widgetHint": "Data is fetched and cached server-side (~20s). The browser only renders the result, so credentials are never exposed.",
+    "selectFromGallery": "From Gallery"
   },
   "login": {
     "loginButton": "Login",

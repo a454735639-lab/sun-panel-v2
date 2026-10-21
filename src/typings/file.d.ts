@@ -5,7 +5,14 @@ declare namespace File {
 		userId: number
 		fileName: string
 		method: number
-		ext: string
+		/**
+		 * 扩展名。**可能不存在** —— 后端 GetList 是手工拼返回结构，
+		 * 曾漏掉该字段；而上传接口返回的对象也没有它。
+		 * 需要判断文件类型时请以文件名后缀为准（可选地拿它做交叉判断）。
+		 */
+		ext?: string
+		/** 服务端存储路径 */
+		path?: string
 	}
 
 

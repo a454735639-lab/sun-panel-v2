@@ -145,6 +145,10 @@ func (a *FileApi) GetList(c *gin.Context) {
 			"createTime": v.CreatedAt,
 			"updateTime": v.UpdatedAt,
 			"path":       v.Src,
+			// 扩展名。模型与数据库一直有该字段，但这里手工拼返回结构时
+			// 漏掉了 —— 前端想按类型筛选文件（如图库只显示图片）时
+			// 只能退化到解析文件名后缀。补上更可靠。
+			"ext": v.Ext,
 		})
 	}
 	apiReturn.SuccessListData(c, data, count)

@@ -233,6 +233,13 @@
       "noDocker": "未检测到 Docker。请确认容器已挂载 /var/run/docker.sock 后重新扫描。",
       "empty": "没有可导入的容器。",
       "already": "已导入"
+    },
+    "galleryPicker": {
+      "title": "从图库选择",
+      "searchPlaceholder": "搜索文件名",
+      "loadFailed": "加载图库失败",
+      "empty": "图库还没有图片，先去「图库」上传",
+      "noMatch": "没有匹配的图片"
     }
   },
   "notepad": {
@@ -373,7 +380,8 @@
     "widget": "小组件（卡片下方显示实时状态）",
     "widgetType": "小组件类型",
     "widgetTypePlaceholder": "不启用则留空",
-    "widgetHint": "小组件由服务端读取数据并缓存（约 20 秒），前端仅负责展示，凭据不会暴露在浏览器中。"
+    "widgetHint": "小组件由服务端读取数据并缓存（约 20 秒），前端仅负责展示，凭据不会暴露在浏览器中。",
+    "selectFromGallery": "从图库选择"
   },
   "login": {
     "loginButton": "登录",

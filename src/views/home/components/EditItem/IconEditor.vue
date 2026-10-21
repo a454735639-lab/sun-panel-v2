@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { NButton, NColorPicker, NInput, NRadio, NUpload } from 'naive-ui'
 import type { UploadFileInfo } from 'naive-ui'
-import { computed, defineProps } from 'vue'
-import { ItemIcon } from '@/components/common'
+import { computed, defineProps, ref } from 'vue'
+import { GalleryPicker, ItemIcon } from '@/components/common'
 import { useAuthStore } from '@/store'
 import { apiRespErrMsg } from '@/utils/request/apiMessage'
 
@@ -80,6 +80,21 @@ const handleUploadFinish = ({
 
   return file
 }
+
+/* ---------- 从图库选择 ---------- */
+const galleryShow = ref(false)
+
+/**
+ * 图库选中的图片回填。
+ *
+ * 与上传完成走同一条路径：都是把地址写进 src 并向父组件 emit。
+ * 不额外引入"图片来源"这种状态 —— 图片一旦选定就只是一个 URL，
+ * 区分来源没有意义，反而会让后续的编辑与保存逻辑分叉。
+ */
+function handleGallerySelect(src: string) {
+  itemIconInfo.value.src = src
+  emit('update:itemIcon', itemIconInfo.value || null)
+}
 </script>
 
 <template>
@@ -140,19 +155,27 @@ const handleUploadFinish = ({
           <!-- 图片 -->
           <div v-if="itemIconInfo.itemType === 2">
             <NInput v-model:value="itemIconInfo.src" class="mb-[5px] w-full" size="small" type="text" :placeholder="$t('iconItem.inputIconUrlOrUpload')" @input="handleChange" />
-            <NUpload
-              action="/api/file/uploadImg"
-              :show-file-list="false"
-              name="imgfile"
-              :headers="{
-                token: authStore.token as string,
-              }"
-              @finish="handleUploadFinish"
-            >
-              <NButton size="small">
-                {{ $t('iconItem.selectUpload') }}
+            <div class="flex items-center gap-2">
+              <NUpload
+                action="/api/file/uploadImg"
+                :show-file-list="false"
+                name="imgfile"
+                :headers="{
+                  token: authStore.token as string,
+                }"
+                @finish="handleUploadFinish"
+              >
+                <NButton size="small">
+                  {{ $t('iconItem.selectUpload') }}
+                </NButton>
+              </NUpload>
+
+              <!-- 从图库选：图片此前只能"填 URL"或"重新上传"，
+                   图库里已有的图无法直接复用。 -->
+              <NButton size="small" @click="galleryShow = true">
+                {{ $t('iconItem.selectFromGallery') }}
               </NButton>
-            </NUpload>
+            </div>
           </div>
         </div>
       </div>
@@ -178,6 +201,9 @@ const handleUploadFinish = ({
         </div>
       </div>
     </div>
+
+    <!-- 图库选择器：选中后回填到 src，与手工填 URL 走同一条路径 -->
+    <GalleryPicker v-model:show="galleryShow" @select="handleGallerySelect" />
   </div>
 </template>
 
