@@ -341,7 +341,11 @@
     "onlineIconLibrary": "Online icon library",
     "openMethod": "Open method",
     "selectUpload": "Local upload",
-    "url": "URL"
+    "url": "URL",
+    "widget": "Widget (show live status below the card)",
+    "widgetType": "Widget Type",
+    "widgetTypePlaceholder": "Leave empty to disable",
+    "widgetHint": "Data is fetched and cached server-side (~20s). The browser only renders the result, so credentials are never exposed."
   },
   "login": {
     "loginButton": "Login",

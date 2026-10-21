@@ -350,7 +350,11 @@
     "openMethod": "打开方式",
     "selectUpload": "本地上传",
     "url": "地址",
-    "lanOnly": "仅内网展示"
+    "lanOnly": "仅内网展示",
+    "widget": "小组件（卡片下方显示实时状态）",
+    "widgetType": "小组件类型",
+    "widgetTypePlaceholder": "不启用则留空",
+    "widgetHint": "小组件由服务端读取数据并缓存（约 20 秒），前端仅负责展示，凭据不会暴露在浏览器中。"
   },
   "login": {
     "loginButton": "登录",

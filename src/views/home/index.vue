@@ -19,6 +19,7 @@ import {  computed } from "vue"
 import { useWindowSize } from "@vueuse/core"
 import { NDrawer, NDrawerContent, NTree,  } from "naive-ui"
 import { useDockerStates, setWatchedContainers, parseContainerId } from '@/hooks/useDockerStates'
+import { useWidgets, setWatchedWidgetCards } from '@/hooks/useWidgets'
 interface ItemGroup extends Panel.ItemIconGroup {
   sortStatus?: boolean
   hoverStatus: boolean
@@ -142,6 +143,34 @@ watch(watchedContainerIds, (ids) => {
 
 // 提供给 AppIcon：卡片用它查询自身容器的状态，避免每张卡片各自轮询
 provide('dockerStateOf', docker.stateOf)
+
+/* ---------- 小组件（Widget）数据 ----------
+ * 与 Docker 状态同一套做法：从当前可见卡片派生出「需要取数的卡片 ID」，
+ * 交给 hook 集中批量请求一次，再把查询函数 provide 给卡片。
+ *
+ * 为什么批量而非逐张请求：面板上可能有多张小组件卡片，
+ * 逐张请求会让请求数随卡片数线性增长；后端提供了 batch 接口
+ * （且带 20 秒缓存），一次请求即可全部取回。
+ */
+const widgets = useWidgets()
+
+const watchedWidgetCardIds = computed(() => {
+  const ids: number[] = []
+  for (const group of filterItems.value) {
+    for (const item of group.items || []) {
+      // widgetType 非空即表示这张卡配了小组件
+      if (item.widgetType && item.id)
+        ids.push(Number(item.id))
+    }
+  }
+  return ids
+})
+
+watch(watchedWidgetCardIds, (ids) => {
+  setWatchedWidgetCards(ids)
+}, { immediate: true, deep: false })
+
+provide('widgetOf', widgets.resultOf)
 
 
 const drawerVisible = ref(false)

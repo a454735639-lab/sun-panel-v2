@@ -50,13 +50,30 @@ func (a *ItemIcon) Edit(c *gin.Context) {
 
 	if req.ID != 0 {
 		// 修改
-		updateField := []string{"IconJson", "Icon", "Title", "Url", "LanUrl", "Description", "OpenMethod", "GroupId", "UserId", "ItemIconGroupId", "LanOnly"}
+		//
+		// 字段白名单。新增可编辑字段时必须加进来，否则前端改了也存不进去
+		// —— WidgetType / WidgetConfig 就曾因此长期失效（模型与数据库列都在，
+		// 唯独更新语句没带上，表现为"配了小组件没有任何反应"）。
+		updateField := []string{
+			"IconJson", "Icon", "Title", "Url", "LanUrl", "Description",
+			"OpenMethod", "GroupId", "UserId", "ItemIconGroupId", "LanOnly",
+			// 小组件：类型 + 参数（JSON 字符串）
+			"WidgetType", "WidgetConfig",
+			// 卡片类型：0 普通 / 2 Docker。此前也不在白名单里，
+			// 导致已存在的卡片无法被改成 Docker 卡片。
+			"CardType", "ExpandParam",
+			// 背景色 / 仅名称
+			"BackgroundColor", "OnlyName",
+		}
 		if req.Sort != 0 {
 			updateField = append(updateField, "Sort")
 		}
+		// 带上 user_id 条件防止越权：只按 id 匹配的话，
+		// 任何登录用户都能通过构造 ID 修改别人的卡片。
 		global.Db.Model(&models.ItemIcon{}).
 			Select(updateField).
-			Where("id=?", req.ID).Updates(&req)
+			Where("id = ? AND user_id = ?", req.ID, userInfo.ID).
+			Updates(&req)
 	} else {
 		req.Sort = 9999
 		// 创建

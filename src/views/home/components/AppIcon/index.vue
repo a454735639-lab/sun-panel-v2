@@ -3,6 +3,8 @@ import { computed, inject } from 'vue'
 import { ItemIcon } from '@/components/common'
 import { PanelPanelConfigStyleEnum } from '@/enums'
 import { parseContainerId } from '@/hooks/useDockerStates'
+import WidgetDisplay from './WidgetDisplay.vue'
+import type { WidgetItem } from '@/api/panel/widget'
 
 interface Prop {
   itemInfo?: Panel.ItemInfo
@@ -22,6 +24,26 @@ const props = withDefaults(defineProps<Prop>(), {
 // 用 inject 而非在卡片内自行轮询：面板上可能有多张 Docker 卡片，
 // 集中轮询一次即可，避免请求数随卡片数增长。
 const stateOf = inject<(id: string) => DockerStateLike | undefined>('dockerStateOf', () => undefined)
+
+// 小组件数据查询函数（同样由首页集中轮询）
+const widgetOf = inject<(cardId: number) => WidgetItem | undefined>('widgetOf', () => undefined)
+
+/**
+ * 该卡片配置的小组件数据。
+ *
+ * 与 Docker 卡片互斥：Docker 用的是 cardType + expandParam，
+ * 小组件用的是 widgetType + widgetConfig，两者不会同时配置
+ * （编辑界面里是两条独立路径）。
+ */
+const widgetData = computed(() => {
+  const type = props.itemInfo?.widgetType
+  const id = props.itemInfo?.id
+  if (!type || !id)
+    return undefined
+  return widgetOf(Number(id))
+})
+
+const hasWidget = computed(() => !!props.itemInfo?.widgetType)
 
 const defaultBackground = '#2a2a2a6b'
 
@@ -194,10 +216,29 @@ interface DockerStateLike {
         {{ metricsText }}
       </div>
     </div>
+
+    <!-- 小组件数据：下载进度 / 媒体库统计等。
+         放在卡片**下方**而非卡内：info 模式是横向 flex 布局，
+         塞进去会挤成第三列；放外面则对两种卡片样式都安全，
+         也符合"卡片显示入口、下方显示实时状态"的信息层次。 -->
+    <div
+      v-if="hasWidget"
+      class="app-icon-widget"
+      :data-widget-card-id="itemInfo?.id"
+    >
+      <WidgetDisplay :data="widgetData" :text-color="iconTextColor" />
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 小组件区：卡片下方的独立区域。
+   加一点上边距与文字阴影，让它在壁纸上也能看清。 */
+.app-icon-widget {
+  margin-top: 4px;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.45);
+}
+
 /* ---------- Docker 容器状态点 ----------
    绿=运行中，红=已停止/退出，黄=过渡态（创建中/重启中），灰=状态未知。
    用 absolute 定位在卡片右上角，不参与布局，因此不会挤压标题与描述。
