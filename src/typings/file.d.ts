@@ -15,6 +15,8 @@ declare namespace File {
 		path?: string
 		/** 是否已共享到公共图库（1 是 / 0 否） */
 		isPublic?: number
+		/** 用途分类：0 未分类 / 1 壁纸 / 2 图标 */
+		usage?: number
 	}
 
 

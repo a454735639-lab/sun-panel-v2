@@ -36,3 +36,16 @@ export function setPublic<T>(ids: number[], isPublic: 0 | 1) {
     data: { ids, isPublic },
   })
 }
+
+/**
+ * 设置文件的用途分类：0 未分类 / 1 壁纸 / 2 图标。
+ *
+ * 支持批量 —— 用户常会一次圈选多张一起归类。
+ * 后端带 user_id 条件，只能操作自己的文件。
+ */
+export function setUsage<T>(ids: number[], usage: 0 | 1 | 2) {
+  return post<T>({
+    url: '/file/setUsage',
+    data: { ids, usage },
+  })
+}

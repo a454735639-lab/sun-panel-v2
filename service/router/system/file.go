@@ -23,6 +23,7 @@ func InitFileRouter(router *gin.RouterGroup) {
 		// 它是"所有账号都能用"，不是"对互联网公开"。
 		private.POST("/file/publicList", FileApi.PublicList)
 		private.POST("/file/setPublic", FileApi.SetPublic)
+		private.POST("/file/setUsage", FileApi.SetUsage)
 	}
 
 }

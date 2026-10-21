@@ -165,6 +165,8 @@ func ensureColumns(db *gorm.DB) error {
 	need := []col{
 		// 公共图库：文件的共享标记
 		{table: "file", column: "is_public", model: &models.File{}, field: "IsPublic"},
+		// 图库分类：用途标记（壁纸/图标）
+		{table: "file", column: "usage", model: &models.File{}, field: "Usage"},
 	}
 
 	for _, c := range need {

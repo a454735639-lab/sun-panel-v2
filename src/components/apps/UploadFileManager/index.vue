@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { NAlert, NButton, NButtonGroup, NCard, NEllipsis, NGrid, NGridItem, NImage, NImageGroup, NSpin, useDialog, useMessage } from 'naive-ui'
-import { onMounted, ref } from 'vue'
-import { deletes, getList, setPublic } from '@/api/system/file'
+import { NAlert, NButton, NButtonGroup, NCard, NEllipsis, NGrid, NGridItem, NImage, NImageGroup, NSpin, NTabPane, NTabs, useDialog, useMessage } from 'naive-ui'
+import { computed, onMounted, ref } from 'vue'
+import { deletes, getList, setPublic, setUsage } from '@/api/system/file'
 import { set as savePanelConfig } from '@/api/panel/userConfig'
 import { RoundCardModal, SvgIcon } from '@/components/common'
 import { copyToClipboard, timeFormat } from '@/utils/cmn'
@@ -17,7 +17,9 @@ interface InfoModalState {
   show: boolean
   fileInfo: File.Info | null
 }
-const imageList = ref<File.Info[]>([])
+// 全量文件列表（未按 tab 过滤）。
+// imageList 是「当前 tab 下显示的部分」，由 computed 派生 —— 两者命名上区分开。
+const allFiles = ref<File.Info[]>([])
 const ms = useMessage()
 const dialog = useDialog()
 const panelStore = usePanelState()
@@ -31,8 +33,42 @@ const infoModalState = ref<InfoModalState>({
 async function getFileList() {
   loading.value = true
   const { data } = await getList<Common.ListResponse<File.Info[]>>()
-  imageList.value = data.list
+  allFiles.value = data.list
   loading.value = false
+}
+
+/* ---------- 用途分类（全部 / 壁纸 / 图标） ---------- */
+const activeTab = ref<'all' | 'wallpaper' | 'icon'>('all')
+
+/**
+ * 当前 tab 下要显示的文件。
+ *
+ * 用 computed 过滤而不是重新请求 —— 文件列表本来就在内存里，
+ * 切 tab 再发一次请求既慢又没必要。
+ * 但**过滤后要重新按 tab 渲染**，所以 imageList 改为 computed。
+ */
+const imageList = computed(() => {
+  if (activeTab.value === 'wallpaper')
+    return allFiles.value.filter(f => f.usage === 1)
+  if (activeTab.value === 'icon')
+    return allFiles.value.filter(f => f.usage === 2)
+  return allFiles.value
+})
+
+/** 标记用途：0 未分类 / 1 壁纸 / 2 图标 */
+async function handleSetUsage(fileInfo: File.Info, usage: 0 | 1 | 2) {
+  // 点已选中的分类 = 取消标记，省一个"清除"按钮
+  const next: 0 | 1 | 2 = fileInfo.usage === usage ? 0 : usage
+  try {
+    const { code, msg } = await setUsage([fileInfo.id as number], next)
+    if (code === 0)
+      getFileList()
+    else
+      ms.error(`${t('common.failed')}:${msg}`)
+  }
+  catch {
+    ms.error(t('common.failed'))
+  }
 }
 
 async function copyImageUrl(text: string) {
@@ -123,6 +159,14 @@ onMounted(() => {
     <NAlert type="info" :bordered="false">
       {{ $t('apps.uploadsFileManager.alertText') }}
     </NAlert>
+
+    <!-- 用途分类。壁纸与图标是两种不同的使用场景，混在一起找图很费劲。
+         分类由用户手动标记 —— 按文件名/尺寸自动推断不准，猜错更难找。 -->
+    <NTabs v-model:value="activeTab" type="segment" size="small" class="mt-2">
+      <NTabPane name="all" :tab="$t('apps.uploadsFileManager.tabAll')" />
+      <NTabPane name="wallpaper" :tab="$t('apps.uploadsFileManager.tabWallpaper')" />
+      <NTabPane name="icon" :tab="$t('apps.uploadsFileManager.tabIcon')" />
+    </NTabs>
     <div class="flex justify-center mt-2">
       <div v-if="imageList.length === 0 && !loading" class="flex">
         {{ $t('apps.uploadsFileManager.nothingText') }}
@@ -171,6 +215,32 @@ onMounted(() => {
                     >
                       <template #icon>
                         <SvgIcon :icon="item.isPublic === 1 ? 'material-symbols:public' : 'material-symbols:public-off'" />
+                      </template>
+                    </NButton>
+                    <!-- 标记用途。点已选中的分类即取消标记（省一个"清除"按钮）。
+                         用图标而非文字，避免把按钮组撑得过宽。 -->
+                    <NButton
+                      size="tiny"
+                      tertiary
+                      :type="item.usage === 1 ? 'primary' : 'default'"
+                      :title="$t('apps.uploadsFileManager.markWallpaper')"
+                      style="cursor: pointer;"
+                      @click="handleSetUsage(item, 1)"
+                    >
+                      <template #icon>
+                        <SvgIcon icon="lucide:image" />
+                      </template>
+                    </NButton>
+                    <NButton
+                      size="tiny"
+                      tertiary
+                      :type="item.usage === 2 ? 'primary' : 'default'"
+                      :title="$t('apps.uploadsFileManager.markIcon')"
+                      style="cursor: pointer;"
+                      @click="handleSetUsage(item, 2)"
+                    >
+                      <template #icon>
+                        <SvgIcon icon="material-symbols:category-outline" />
                       </template>
                     </NButton>
                     <NButton size="tiny" tertiary type="error" style="cursor: pointer;" :title="$t('common.delete')" @click="handleDelete(item.id as number)">

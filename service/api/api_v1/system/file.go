@@ -152,6 +152,8 @@ func (a *FileApi) GetList(c *gin.Context) {
 			// 是否已共享到公共图库。列表里要显示"已共享"标记，
 			// 否则用户不知道自己哪些图是公开的。
 			"isPublic": v.IsPublic,
+			// 用途分类（0 未分类 / 1 壁纸 / 2 图标）
+			"usage": v.Usage,
 		})
 	}
 	apiReturn.SuccessListData(c, data, count)
@@ -261,4 +263,40 @@ func (a *FileApi) PublicList(c *gin.Context) {
 	}
 
 	apiReturn.SuccessListData(c, data, int64(len(data)))
+}
+
+// SetUsage 设置文件的用途分类（0 未分类 / 1 壁纸 / 2 图标）。
+//
+// 支持批量（用户常会一次圈选多张一起归类）。
+// 与 SetPublic 同理，带 user_id 条件，只能操作自己的文件。
+func (a *FileApi) SetUsage(c *gin.Context) {
+	userInfo, _ := base.GetCurrentUserInfo(c)
+
+	var req struct {
+		IDs   []uint `json:"ids"`
+		Usage int    `json:"usage"`
+	}
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		apiReturn.ErrorParamFomat(c, err.Error())
+		return
+	}
+	if len(req.IDs) == 0 {
+		apiReturn.ErrorParamFomat(c, "ids 不能为空")
+		return
+	}
+	// 只接受已定义的取值，避免写入无意义的值导致筛选出现"幽灵分类"
+	if req.Usage < 0 || req.Usage > 2 {
+		apiReturn.ErrorParamFomat(c, "usage 取值非法")
+		return
+	}
+
+	res := global.Db.Model(&models.File{}).
+		Where("user_id = ? AND id in ?", userInfo.ID, req.IDs).
+		Update("usage", req.Usage)
+	if res.Error != nil {
+		apiReturn.ErrorDatabase(c, res.Error.Error())
+		return
+	}
+
+	apiReturn.SuccessData(c, gin.H{"updated": res.RowsAffected})
 }

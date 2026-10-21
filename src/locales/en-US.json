@@ -179,7 +179,12 @@
       "share": "Share to public gallery",
       "unshare": "Unshare",
       "shareSuccess": "Shared to public gallery",
-      "unshareSuccess": "Unshared"
+      "unshareSuccess": "Unshared",
+      "tabAll": "All",
+      "tabWallpaper": "Wallpaper",
+      "tabIcon": "Icon",
+      "markWallpaper": "Mark as wallpaper",
+      "markIcon": "Mark as icon"
     },
     "userInfo": {
       "appName": "My Information",

@@ -184,7 +184,12 @@
       "share": "共享到公共图库",
       "unshare": "取消共享",
       "shareSuccess": "已共享到公共图库",
-      "unshareSuccess": "已取消共享"
+      "unshareSuccess": "已取消共享",
+      "tabAll": "全部",
+      "tabWallpaper": "壁纸",
+      "tabIcon": "图标",
+      "markWallpaper": "标记为壁纸",
+      "markIcon": "标记为图标"
     },
     "userInfo": {
       "appName": "我的信息",
