@@ -164,7 +164,9 @@
     "itemGroupManage": {
       "appName": "分组管理",
       "deleteWarnText": "你确定删除此分组[{name}]，删除后此分组应用图标将丢失？",
-      "groupName": "分组名称"
+      "groupName": "分组名称",
+      "cardStyle": "卡片风格",
+      "textColor": "文字颜色"
     },
     "uploadsFileManager": {
       "alertText": "你可以在这里管理你上传过的壁纸和图标",

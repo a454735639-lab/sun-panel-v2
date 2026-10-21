@@ -29,13 +29,25 @@ func (a *ItemIconGroup) Edit(c *gin.Context) {
 
 	if req.ID != 0 {
 		// 修改
-		updateField := []string{"IconJson", "Icon", "Title", "Url", "LanUrl", "Description", "OpenMethod", "GroupId", "UserId"}
+		//
+		// 字段白名单。加入 CardStyle 之前，分组级卡片风格完全存不进去 ——
+		// 模型有字段、数据库有列、前端也提交了，唯独更新语句没带上，
+		// 表现为"改分组风格保存后没反应"。（与此前 WidgetType 同类问题。）
+		updateField := []string{
+			"IconJson", "Icon", "Title", "Url", "LanUrl", "Description",
+			"OpenMethod", "GroupId", "UserId",
+			// 分组级卡片样式（JSON 字符串）
+			"CardStyle",
+		}
 		if req.Sort != 0 {
 			updateField = append(updateField, "Sort")
 		}
+		// 带上 user_id 条件防止越权：只按 id 匹配的话，
+		// 任何登录用户构造一个 ID 就能改别人的分组。
 		global.Db.Model(&models.ItemIconGroup{}).
 			Select(updateField).
-			Where("id=?", req.ID).Updates(&req)
+			Where("id = ? AND user_id = ?", req.ID, userInfo.ID).
+			Updates(&req)
 	} else {
 		// 创建
 		global.Db.Create(&req)

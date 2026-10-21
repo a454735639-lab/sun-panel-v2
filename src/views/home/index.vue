@@ -186,6 +186,7 @@ import { getList as getBookmarksList } from '@/api/panel/bookmark'
 import { getList as getGroupList } from '@/api/panel/itemIconGroup'
 import { ss } from '@/utils/storage/local'
 import { staleWhileRevalidate } from '@/utils/cacheStrategy'
+import { parseGroupCardStyle, GroupCardStyleEnum } from '@/utils/groupCardStyle'
 
 
 // 书签数据树
@@ -628,6 +629,38 @@ function findNodeByKey(nodes: any[], key: string | number): any {
 }
 
 // 根据网络模式过滤项目
+
+/**
+ * 取某个分组最终生效的卡片样式。
+ *
+ * 规则：分组自己设了 cardStyle 就用它，否则回落到全局 panelConfig.iconStyle。
+ * 这样老数据（分组未设样式）行为不变，新数据可以逐组定制。
+ *
+ * 顺带把该分组要用的文字色、描述/标题显隐一并算出来 ——
+ * 分组样式里这几个字段若未设置（空串 / false），沿用全局值。
+ */
+function groupStyleOf(group: ItemGroup) {
+  const gs = parseGroupCardStyle(group.cardStyle)
+  const cfg = panelState.panelConfig
+
+  // 分组的 textColor 为空表示"跟随全局"
+  const textColor = gs.textColor || cfg.iconTextColor
+
+  // 分组是否显式设过 style：cardStyle 为空或无法解析时视为未设
+  const hasOwnStyle = !!(group.cardStyle && group.cardStyle.trim() && group.cardStyle.trim() !== 'null')
+
+  return {
+    // 分组没设过样式 → 用全局；设过 → 用分组的
+    style: hasOwnStyle ? gs.style : (cfg.iconStyle ?? GroupCardStyleEnum.icon),
+    textColor,
+    // 描述/标题显隐：分组设了 true 就隐藏，否则看全局
+    infoHideDescription: gs.textInfoHideDescription || !!cfg.iconTextInfoHideDescription,
+    iconHideTitle: gs.textIconHideTitle || !!cfg.iconTextIconHideTitle,
+    // 小卡的描述显隐（与标题显隐同属分组/全局两级）
+    iconHideDescription: !!cfg.iconTextIconHideDescription,
+  }
+}
+
 function filterItemsByNetworkMode() {
   // 只有在公网模式下才需要过滤
   if (panelState.networkMode === PanelStateNetworkModeEnum.wan) {
@@ -1311,8 +1344,8 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
               </div>
             </div>
 
-            <!-- 详情图标 -->
-            <div v-if="panelState.panelConfig.iconStyle === PanelPanelConfigStyleEnum.info">
+            <!-- 详情图标（按分组的实际样式决定渲染哪一种） -->
+            <div v-if="groupStyleOf(itemGroup).style === PanelPanelConfigStyleEnum.info">
               <div v-if="itemGroup.items">
                 <VueDraggable
                   v-model="itemGroup.items" item-key="sort" :animation="300"
@@ -1325,9 +1358,9 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="item"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="panelState.panelConfig.iconTextInfoHideDescription || false"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="groupStyleOf(itemGroup).textColor"
+                      :icon-text-info-hide-description="groupStyleOf(itemGroup).infoHideDescription"
+                      :icon-text-icon-hide-title="groupStyleOf(itemGroup).iconHideTitle"
                       :style="0"
                       @click="handleItemClick(itemGroupIndex, item)"
                     />
@@ -1337,9 +1370,9 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: t('common.add'), url: '', openMethod: 0 }"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="panelState.panelConfig.iconTextInfoHideDescription || false"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="groupStyleOf(itemGroup).textColor"
+                      :icon-text-info-hide-description="groupStyleOf(itemGroup).infoHideDescription"
+                      :icon-text-icon-hide-title="groupStyleOf(itemGroup).iconHideTitle"
                       :style="0"
                       @click="handleAddItem(itemGroup.id)"
                     />
@@ -1349,7 +1382,7 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
             </div>
 
             <!-- APP图标宫型盒子 -->
-            <div v-if="panelState.panelConfig.iconStyle === PanelPanelConfigStyleEnum.icon">
+            <div v-if="groupStyleOf(itemGroup).style === PanelPanelConfigStyleEnum.icon">
               <div v-if="itemGroup.items">
                 <VueDraggable
                   v-model="itemGroup.items" item-key="sort" :animation="300"
@@ -1363,9 +1396,9 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
                     <AppIcon
                       :class="itemGroup.sortStatus ? 'cursor-move' : 'cursor-pointer'"
                       :item-info="item"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="panelState.panelConfig.iconTextIconHideDescription || false"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="groupStyleOf(itemGroup).textColor"
+                      :icon-text-info-hide-description="groupStyleOf(itemGroup).iconHideDescription"
+                      :icon-text-icon-hide-title="groupStyleOf(itemGroup).iconHideTitle"
                       :style="1"
                       @click="handleItemClick(itemGroupIndex, item)"
                     />
@@ -1375,9 +1408,9 @@ function handleChangeNetwork(targetMode: PanelStateNetworkModeEnum) {
                     <AppIcon
                       class="cursor-pointer"
                       :item-info="{ icon: { itemType: 3, text: 'subway:add' }, title: $t('common.add'), url: '', openMethod: 0 }"
-                      :icon-text-color="panelState.panelConfig.iconTextColor"
-                      :icon-text-info-hide-description="panelState.panelConfig.iconTextIconHideDescription || false"
-                      :icon-text-icon-hide-title="panelState.panelConfig.iconTextIconHideTitle || false"
+                      :icon-text-color="groupStyleOf(itemGroup).textColor"
+                      :icon-text-info-hide-description="groupStyleOf(itemGroup).iconHideDescription"
+                      :icon-text-icon-hide-title="groupStyleOf(itemGroup).iconHideTitle"
                       :style="1"
                       @click="handleAddItem(itemGroup.id)"
                     />

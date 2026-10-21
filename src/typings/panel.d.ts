@@ -37,6 +37,13 @@ declare namespace Panel {
         icon?: string
         title?: string
         sort?:number
+        /**
+         * 分组级卡片样式（JSON 字符串）。
+         * 结构见 utils/groupCardStyle.ts 的 GroupCardStyle。
+         * 后端一直返回该字段，此前前端未声明也未使用，
+         * 导致所有分组只能共用全局的 panelConfig.iconStyle。
+         */
+        cardStyle?: string
     }
 
     interface ItemIcon {
